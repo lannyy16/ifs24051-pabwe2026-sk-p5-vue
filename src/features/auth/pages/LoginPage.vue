@@ -1,10 +1,10 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-    <div class="grid min-h-screen lg:grid-cols-2">
+    <div class="grid min-h-screen md:grid-cols-2">
 
-      <!-- Bagian kiri -->
+      <!-- Left -->
       <div
-        class="hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 p-12 text-white lg:flex lg:flex-col lg:justify-between"
+        class="hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 p-10 text-white md:flex md:flex-col md:justify-between lg:p-12"
       >
         <div>
           <div class="mb-12 flex items-center gap-3">
@@ -15,8 +15,13 @@
             </div>
 
             <div>
-              <h1 class="text-xl font-bold">Delcom Auction</h1>
-              <p class="text-sm text-indigo-200">Platform Lelang</p>
+              <h1 class="text-xl font-bold">
+                Delcom Auction
+              </h1>
+
+              <p class="text-sm text-indigo-200">
+                Platform Lelang
+              </p>
             </div>
           </div>
 
@@ -27,7 +32,7 @@
               Selamat Datang 👋
             </p>
 
-            <h2 class="text-4xl font-bold leading-tight xl:text-5xl">
+            <h2 class="text-4xl font-bold leading-tight">
               Temukan barang menarik dan ikuti lelang dengan mudah.
             </h2>
 
@@ -56,12 +61,12 @@
         </div>
       </div>
 
-      <!-- Bagian kanan -->
+      <!-- Right -->
       <div class="flex items-center justify-center px-6 py-10 sm:px-10 lg:px-16">
         <div class="w-full max-w-md">
 
-          <!-- Logo mobile -->
-          <div class="mb-8 flex items-center justify-center gap-3 lg:hidden">
+          <!-- Mobile Logo -->
+          <div class="mb-8 flex items-center justify-center gap-3 md:hidden">
             <div
               class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-xl font-bold text-white shadow-lg shadow-indigo-200"
             >
@@ -72,13 +77,14 @@
               <h1 class="text-xl font-bold text-gray-900">
                 Delcom Auction
               </h1>
+
               <p class="text-sm text-gray-500">
                 Platform Lelang
               </p>
             </div>
           </div>
 
-          <!-- Card login -->
+          <!-- Card -->
           <div
             class="rounded-3xl border border-gray-100 bg-white p-7 shadow-xl shadow-gray-200/60 sm:p-9"
           >
@@ -106,30 +112,32 @@
               {{ authStore.error }}
             </div>
 
-            <form class="space-y-5" @submit.prevent="handleSubmit">
-
-              <!-- Username -->
+            <form
+              class="space-y-5"
+              @submit.prevent="handleSubmit"
+            >
+              <!-- Email -->
               <div>
                 <label
-                  for="username"
+                  for="email"
                   class="mb-2 block text-sm font-semibold text-gray-700"
                 >
-                  Username
+                  Email
                 </label>
 
                 <div class="relative">
                   <span
                     class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
                   >
-                    👤
+                    ✉️
                   </span>
 
                   <input
-                    id="username"
-                    v-model="username"
-                    type="text"
-                    autocomplete="username"
-                    placeholder="Masukkan username"
+                    id="email"
+                    v-model="email"
+                    type="email"
+                    autocomplete="email"
+                    placeholder="Masukkan email"
                     required
                     class="w-full rounded-xl border border-gray-200 bg-gray-50 py-3.5 pl-11 pr-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
                   />
@@ -138,14 +146,12 @@
 
               <!-- Password -->
               <div>
-                <div class="mb-2 flex items-center justify-between">
-                  <label
-                    for="password"
-                    class="block text-sm font-semibold text-gray-700"
-                  >
-                    Password
-                  </label>
-                </div>
+                <label
+                  for="password"
+                  class="mb-2 block text-sm font-semibold text-gray-700"
+                >
+                  Password
+                </label>
 
                 <div class="relative">
                   <span
@@ -222,18 +228,18 @@ import { useAuthStore } from '../states/authStore'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const username = ref('')
+const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 
 async function handleSubmit() {
-  if (!username.value.trim() || !password.value) {
+  if (!email.value.trim() || !password.value) {
     return
   }
 
   try {
     await authStore.login({
-      username: username.value,
+      email: email.value.trim(),
       password: password.value,
     })
 
