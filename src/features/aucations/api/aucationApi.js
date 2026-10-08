@@ -3,7 +3,9 @@ import {
   toFormData,
 } from '../../../helpers/apiHelper'
 
-export async function getAucationsApi(query = {}) {
+export async function getAucationsApi(
+  query = {},
+) {
   return apiFetch('/aucations', {
     query,
   })
@@ -13,7 +15,9 @@ export async function getAucationApi(id) {
   return apiFetch(`/aucations/${id}`)
 }
 
-export async function addAucationApi(payload) {
+export async function addAucationApi(
+  payload,
+) {
   const {
     title,
     description,
@@ -24,8 +28,10 @@ export async function addAucationApi(payload) {
   return apiFetch('/aucations', {
     method: 'POST',
     body: JSON.stringify({
-      title,
-      description,
+      title: String(title).trim(),
+      description: String(
+        description,
+      ).trim(),
       start_bid: Number(start_bid),
       closed_at,
     }),
@@ -46,8 +52,10 @@ export async function updateAucationApi(
   return apiFetch(`/aucations/${id}`, {
     method: 'PUT',
     body: JSON.stringify({
-      title,
-      description,
+      title: String(title).trim(),
+      description: String(
+        description,
+      ).trim(),
       start_bid: Number(start_bid),
       closed_at,
     }),
@@ -58,33 +66,55 @@ export async function changeCoverApi(
   id,
   file,
 ) {
-  return apiFetch(`/aucations/${id}/cover`, {
-    method: 'POST',
-    body: toFormData({
-      cover: file,
-    }),
+  if (!file) {
+    throw new Error(
+      'File cover belum dipilih',
+    )
+  }
+
+  const formData = toFormData({
+    cover: file,
   })
+
+  return apiFetch(
+    `/aucations/${id}/cover`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+  )
 }
 
-export async function deleteAucationApi(id) {
+export async function deleteAucationApi(
+  id,
+) {
   return apiFetch(`/aucations/${id}`, {
     method: 'DELETE',
   })
 }
 
-export async function addBidApi(id, bid) {
-  return apiFetch(`/aucations/${id}/bids`, {
-    method: 'POST',
-    body: JSON.stringify({
-      bid: Number(bid),
-    }),
-  })
+export async function addBidApi(
+  id,
+  bid,
+) {
+  return apiFetch(
+    `/aucations/${id}/bids`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        bid: Number(bid),
+      }),
+    },
+  )
 }
 
 export async function deleteBidApi(id) {
-  return apiFetch(`/aucations/${id}/bids`, {
-    method: 'DELETE',
-  })
+  return apiFetch(
+    `/aucations/${id}/bids`,
+    {
+      method: 'DELETE',
+    },
+  )
 }
 
 export async function deleteAllAucationsApi() {
