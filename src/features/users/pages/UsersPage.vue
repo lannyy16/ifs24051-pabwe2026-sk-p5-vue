@@ -1,42 +1,29 @@
-<template>
-  <section>
-    <div class="mb-6">
-      <p class="text-sm font-semibold text-indigo-600">Pengguna</p>
-      <h1 class="text-3xl font-bold text-slate-900">Daftar Pengguna</h1>
-    </div>
-
-    <div v-if="store.loading" class="rounded-2xl bg-white p-6 shadow-sm">
-      Memuat pengguna...
-    </div>
-
-    <div v-else-if="store.error" class="rounded-2xl bg-white p-6 text-red-600 shadow-sm">
-      {{ store.error }}
-    </div>
-
-    <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <div
-        v-for="user in store.users"
-        :key="user.id"
-        class="rounded-2xl bg-white p-5 shadow-sm"
-      >
-        <h2 class="font-bold text-slate-900">{{ user.name || user.username }}</h2>
-        <p class="mt-1 text-sm text-slate-500">@{{ user.username }}</p>
-      </div>
-
-      <div v-if="store.users.length === 0" class="rounded-2xl bg-white p-6 text-slate-500">
-        Belum ada data pengguna.
-      </div>
-    </div>
-  </section>
-</template>
-
 <script setup>
 import { onMounted } from 'vue'
 import { useUsersStore } from '../states/usersStore'
+import { formatDate, getInitials, resolveImageUrl } from '../../../helpers/toolsHelper'
 
 const store = useUsersStore()
-
-onMounted(() => {
-  store.fetchUsers().catch(() => {})
-})
+onMounted(() => store.fetchUsers())
 </script>
+
+<template>
+  <div>
+    <h1 class="text-3xl font-extrabold tracking-tight">Daftar Pengguna</h1>
+    <p class="mt-1 text-sm text-muted">Semua peserta yang terdaftar di Delcom Auction.</p>
+
+    <p v-if="store.isLoading" class="mt-10 text-center text-sm text-muted">Memuat pengguna…</p>
+    <p v-else-if="store.users.length === 0" class="panel mt-8 p-10 text-center text-sm text-muted">Belum ada pengguna terdaftar.</p>
+    <ul v-else class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <li v-for="user in store.users" :key="user.id" class="panel flex items-center gap-4 p-4" data-testid="user-card">
+        <img v-if="user.photo" :src="resolveImageUrl(user.photo)" :alt="user.name" class="size-12 rounded-full object-cover" />
+        <span v-else class="grid size-12 place-items-center rounded-full bg-pine-800 font-bold text-white">{{ getInitials(user.name) }}</span>
+        <div class="min-w-0">
+          <p class="truncate font-bold">{{ user.name }}</p>
+          <p class="truncate text-sm text-muted">{{ user.email }}</p>
+          <p class="text-xs text-muted">Bergabung {{ formatDate(user.created_at) }}</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+</template>

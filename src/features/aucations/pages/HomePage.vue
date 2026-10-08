@@ -1,261 +1,177 @@
-<template>
-  <section>
-    <!-- Header -->
-    <div class="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-      <div>
-        <p class="text-sm font-semibold text-indigo-600">
-          Delcom Auction
-        </p>
-
-        <h1 class="text-3xl font-bold text-slate-900">
-          Daftar Lelang
-        </h1>
-
-        <p class="mt-1 text-slate-500">
-          Temukan barang yang sedang dilelang.
-        </p>
-      </div>
-
-      <button
-        class="rounded-xl bg-indigo-600 px-5 py-3 font-semibold text-white hover:bg-indigo-700"
-        @click="showAdd = true"
-      >
-        + Tambah Lelang
-      </button>
-    </div>
-
-    <!-- Filter -->
-    <div class="mt-6 grid gap-3 md:grid-cols-3">
-      <button
-        class="rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-100"
-        :class="{
-          'ring-2 ring-indigo-500': filter === 'all',
-        }"
-        @click="setFilter('all')"
-      >
-        <p class="text-sm text-slate-500">
-          Semua
-        </p>
-
-        <p class="mt-1 text-2xl font-bold">
-          {{ store.aucations.length }}
-        </p>
-      </button>
-
-      <button
-        class="rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-100"
-        :class="{
-          'ring-2 ring-indigo-500': filter === 'open',
-        }"
-        @click="setFilter('open')"
-      >
-        <p class="text-sm text-slate-500">
-          Sedang Berjalan
-        </p>
-
-        <p class="mt-1 text-2xl font-bold">
-          {{ openCount }}
-        </p>
-      </button>
-
-      <button
-        class="rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-100"
-        :class="{
-          'ring-2 ring-indigo-500': filter === 'closed',
-        }"
-        @click="setFilter('closed')"
-      >
-        <p class="text-sm text-slate-500">
-          Ditutup
-        </p>
-
-        <p class="mt-1 text-2xl font-bold">
-          {{ closedCount }}
-        </p>
-      </button>
-    </div>
-
-    <!-- Data -->
-    <div class="mt-6">
-      <!-- Loading -->
-      <div
-        v-if="store.loading"
-        class="rounded-2xl bg-white p-8 text-center shadow-sm"
-      >
-        Memuat data lelang...
-      </div>
-
-      <!-- Error -->
-      <div
-        v-else-if="store.error"
-        class="rounded-2xl bg-white p-8 text-center text-red-600 shadow-sm"
-      >
-        {{ store.error }}
-      </div>
-
-      <!-- Empty -->
-      <div
-        v-else-if="store.aucations.length === 0"
-        class="rounded-2xl bg-white p-8 text-center text-slate-500 shadow-sm"
-      >
-        Belum ada lelang.
-      </div>
-
-      <!-- Auction Cards -->
-      <div
-        v-else
-        class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
-      >
-        <RouterLink
-          v-for="item in store.aucations"
-          :key="item.id"
-          :to="`/aucations/${item.id}`"
-          class="overflow-hidden rounded-2xl bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-        >
-          <!-- Cover -->
-          <div class="aspect-video bg-slate-100">
-            <img
-              v-if="item.cover"
-              :src="item.cover"
-              :alt="item.title"
-              class="h-full w-full object-cover"
-            />
-
-            <div
-              v-else
-              class="flex h-full items-center justify-center text-slate-400"
-            >
-              Tidak ada gambar
-            </div>
-          </div>
-
-          <!-- Content -->
-          <div class="p-5">
-            <h2
-              class="line-clamp-2 font-bold text-slate-900"
-            >
-              {{ item.title }}
-            </h2>
-
-            <p class="mt-2 text-sm text-slate-500">
-              Harga awal
-            </p>
-
-            <p class="mt-1 text-lg font-bold text-indigo-600">
-              {{ formatRupiah(item.start_bid) }}
-            </p>
-
-            <p class="mt-3 text-xs text-slate-400">
-              Berakhir: {{ formatDate(item.closed_at) }}
-            </p>
-          </div>
-        </RouterLink>
-      </div>
-    </div>
-
-    <!-- Add Modal -->
-    <AddModal
-      :open="showAdd"
-      :loading="store.status.adding"
-      @close="showAdd = false"
-      @submit="add"
-    />
-  </section>
-</template>
-
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
-
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Clock, Gavel, Plus, Search, Trash2 } from 'lucide-vue-next'
+import AddModal from '../components/modals/AddModal.vue'
+import BidModal from '../components/modals/BidModal.vue'
+import { useNow } from '../../../hooks/useNow'
 import { useAucationsStore } from '../states/aucationsStore'
-import AddModal from '../modals/AddModal.vue'
-
+import { useUsersStore } from '../../users/states/usersStore'
+import { isSuccess } from '../../../helpers/apiHelper'
 import {
-  formatDate,
+  extractErrorMessage,
   formatRupiah,
+  getHighestBid,
+  getTimeLeft,
+  isClosed,
+  resolveImageUrl,
+  showConfirmDialog,
   showErrorDialog,
   showSuccessDialog,
 } from '../../../helpers/toolsHelper'
 
+// Catatan dokumentasi API: is_closed=1 -> lelang berlangsung, is_closed=0 -> lelang ditutup
+const TABS = [
+  { key: 'all', label: 'Semua Lelang', params: {} },
+  { key: 'mine', label: 'Lelang Saya', params: { is_me: 1 } },
+  { key: 'open', label: 'Lelang Berlangsung', params: { is_closed: 1 } },
+  { key: 'closed', label: 'Lelang Ditutup', params: { is_closed: 0 } },
+]
+
+const route = useRoute()
+const router = useRouter()
 const store = useAucationsStore()
+const usersStore = useUsersStore()
+const now = useNow()
 
+const search = ref('')
 const showAdd = ref(false)
-const filter = ref('all')
+const bidTarget = ref(null)
 
-const openCount = computed(() => {
-  return store.aucations.filter((item) => {
-    return !isClosed(item.closed_at)
-  }).length
+const activeTab = computed(() => TABS.find((tab) => tab.key === route.query.tab) ?? TABS[0])
+
+const filtered = computed(() => {
+  const keyword = search.value.trim().toLowerCase()
+  return store.aucations.filter((item) => `${item.title} ${item.description}`.toLowerCase().includes(keyword))
 })
 
-const closedCount = computed(() => {
-  return store.aucations.filter((item) => {
-    return isClosed(item.closed_at)
-  }).length
-})
+const load = () => store.fetchAucations(activeTab.value.params)
+watch(() => activeTab.value.key, load, { immediate: true })
 
-function isClosed(closedAt) {
-  if (!closedAt) {
-    return false
-  }
+// /?add=1 (dari menu cepat navbar) membuka modal tambah lelang
+watch(
+  () => route.query.add,
+  (value) => {
+    if (value === '1') {
+      showAdd.value = true
+      router.replace({ query: { ...route.query, add: undefined } })
+    }
+  },
+  { immediate: true },
+)
 
-  return new Date(closedAt.replace(' ', 'T')) <= new Date()
-}
+const selectTab = (key) => router.replace({ query: key === 'all' ? {} : { tab: key } })
+const isOwner = (item) => item.user_id === usersStore.profile?.id
 
-async function load() {
-  const query = {}
-
-  /*
-   * API Delcom:
-   * is_closed=1 -> lelang yang masih terbuka
-   * is_closed=0 -> lelang yang sudah ditutup
-   */
-
-  if (filter.value === 'open') {
-    query.is_closed = 1
-  }
-
-  if (filter.value === 'closed') {
-    query.is_closed = 0
-  }
-
-  try {
-    await store.fetchAucations(query)
-  } catch {
-    // Error sudah disimpan oleh store.
+async function removeAucation(item) {
+  if (!(await showConfirmDialog(`Lelang "${item.title}" akan dihapus permanen.`))) return
+  const response = await store.deleteAucation(item.id)
+  if (isSuccess(response)) {
+    await showSuccessDialog(response.message)
+    load()
+  } else {
+    showErrorDialog(extractErrorMessage(response))
   }
 }
 
-function setFilter(value) {
-  filter.value = value
-  load()
-}
-
-async function add(payload) {
-  try {
-    await store.addAucation(payload)
-
-    showAdd.value = false
-
-    await showSuccessDialog(
-      'Berhasil',
-      'Lelang berhasil ditambahkan.',
-    )
-
-    /*
-     * Ambil ulang data dari API agar
-     * lelang yang baru langsung muncul.
-     */
-    await load()
-  } catch (error) {
-    await showErrorDialog(
-      'Gagal',
-      error.message || 'Gagal menambahkan lelang.',
-    )
+async function removeAll() {
+  if (!(await showConfirmDialog('Semua lelang milikmu beserta cover dan tawarannya akan dihapus permanen.'))) return
+  const response = await store.deleteAllAucations()
+  if (isSuccess(response)) {
+    await showSuccessDialog(response.message)
+    load()
+  } else {
+    showErrorDialog(extractErrorMessage(response))
   }
 }
-
-onMounted(() => {
-  load()
-})
 </script>
+
+<template>
+  <div>
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-extrabold tracking-tight">Dashboard Lelang</h1>
+        <p class="mt-1 text-sm text-muted">Temukan barang incaranmu atau pasang barang untuk dilelang.</p>
+      </div>
+      <button type="button" class="btn btn-brass" @click="showAdd = true"><Plus :size="16" /> Pasang lelang</button>
+    </div>
+
+    <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex flex-wrap gap-2" role="tablist">
+        <button
+          v-for="tab in TABS"
+          :key="tab.key"
+          type="button"
+          role="tab"
+          :aria-selected="tab.key === activeTab.key"
+          class="rounded-full px-4 py-2 text-sm font-semibold transition"
+          :class="tab.key === activeTab.key ? 'bg-pine-800 text-white' : 'bg-white text-ink ring-1 ring-line hover:bg-pine-100'"
+          @click="selectTab(tab.key)"
+        >
+          {{ tab.label }}
+        </button>
+      </div>
+      <div class="relative w-full sm:w-72">
+        <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+        <input v-model="search" type="search" class="field !pl-9" placeholder="Cari judul atau deskripsi…" aria-label="Cari lelang" />
+      </div>
+    </div>
+
+    <div v-if="activeTab.key === 'mine' && store.aucations.length > 0" class="mt-4 flex justify-end">
+      <button type="button" class="btn btn-danger" @click="removeAll"><Trash2 :size="16" /> Hapus semua lelang saya</button>
+    </div>
+
+    <p v-if="store.isAucation" class="mt-10 text-center text-sm text-muted">Memuat lelang…</p>
+    <div v-else-if="filtered.length === 0" class="panel mt-8 p-10 text-center">
+      <Gavel :size="32" class="mx-auto text-brass-500" />
+      <p class="mt-3 font-bold">Belum ada lelang yang cocok</p>
+      <p class="mt-1 text-sm text-muted">Coba ganti filter atau kata kunci pencarian.</p>
+    </div>
+
+    <ul v-else class="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+      <li v-for="item in filtered" :key="item.id" class="panel flex flex-col overflow-hidden" data-testid="aucation-card">
+        <RouterLink :to="`/aucations/${item.id}`" :aria-label="`Lihat lelang ${item.title}`" class="block aspect-[4/3] bg-pine-100">
+          <img v-if="item.cover" :src="resolveImageUrl(item.cover)" :alt="item.title" class="size-full object-cover" />
+          <span v-else class="grid size-full place-items-center text-pine-700"><Gavel :size="40" /></span>
+        </RouterLink>
+
+        <div class="flex flex-1 flex-col p-4">
+          <div class="flex items-center justify-between gap-2 text-xs font-semibold">
+            <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1" :class="isClosed(item.closed_at, now) ? 'bg-danger-100 text-danger' : 'bg-pine-100 text-pine-800'">
+              <Clock :size="12" />
+              {{ isClosed(item.closed_at, now) ? 'Ditutup' : `Sisa ${getTimeLeft(item.closed_at, now)}` }}
+            </span>
+            <span class="text-muted">{{ item.bids.length }} tawaran</span>
+          </div>
+
+          <RouterLink :to="`/aucations/${item.id}`" class="mt-3 line-clamp-2 text-lg font-extrabold leading-snug hover:text-pine-700">
+            {{ item.title }}
+          </RouterLink>
+          <p class="mt-1 text-xs text-muted">oleh {{ item.author.name }}</p>
+
+          <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt class="text-xs text-muted">Harga awal</dt>
+              <dd class="font-bold">{{ formatRupiah(item.start_bid) }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-muted">Tawaran tertinggi</dt>
+              <dd class="font-extrabold text-brass-600">{{ formatRupiah(getHighestBid(item)) }}</dd>
+            </div>
+          </dl>
+
+          <div class="mt-5 flex gap-2">
+            <RouterLink :to="`/aucations/${item.id}`" class="btn btn-ghost flex-1">Lihat detail</RouterLink>
+            <button v-if="isOwner(item)" type="button" class="btn btn-danger" aria-label="Hapus lelang" @click="removeAucation(item)">
+              <Trash2 :size="16" />
+            </button>
+            <button v-else-if="!isClosed(item.closed_at, now)" type="button" class="btn btn-brass" @click="bidTarget = item">Tawar</button>
+          </div>
+        </div>
+      </li>
+    </ul>
+
+    <AddModal :open="showAdd" @close="showAdd = false" @saved="load" />
+    <BidModal v-if="bidTarget" :open="true" :aucation="bidTarget" @close="bidTarget = null" @saved="load" />
+  </div>
+</template>

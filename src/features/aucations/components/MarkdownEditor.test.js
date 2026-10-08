@@ -1,107 +1,50 @@
-import {
-  describe,
-  expect,
-  it,
-} from 'vitest'
-
-import {
-  mount,
-} from '@vue/test-utils'
-
+import { describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/vue'
+import { Editor } from '@toast-ui/editor'
 import MarkdownEditor from './MarkdownEditor.vue'
 
 describe('MarkdownEditor', () => {
-  it('menampilkan label ketika label diberikan', () => {
-    const wrapper = mount(
-      MarkdownEditor,
-      {
-        props: {
-          label: 'Deskripsi',
-        },
-      },
-    )
-
-    expect(
-      wrapper.find('label').exists(),
-    ).toBe(true)
-
-    expect(
-      wrapper.find('label').text(),
-    ).toBe('Deskripsi')
+  it('membuat editor dengan nilai awal dan opsi default', () => {
+    render(MarkdownEditor)
+    expect(screen.getByTestId('markdown-editor')).toBeInTheDocument()
+    const [editor] = Editor.instances
+    expect(editor.options).toMatchObject({
+      initialValue: '',
+      initialEditType: 'markdown',
+      height: '260px',
+      usageStatistics: false,
+    })
+    expect(editor.options.placeholder).toMatch(/Markdown/)
   })
 
-  it('tidak menampilkan label ketika label kosong', () => {
-    const wrapper = mount(
-      MarkdownEditor,
-    )
-
-    expect(
-      wrapper.find('label').exists(),
-    ).toBe(false)
+  it('meneruskan props kustom', () => {
+    render(MarkdownEditor, { props: { modelValue: '# Halo', height: '100px', placeholder: 'Isi' } })
+    expect(Editor.instances[0].options).toMatchObject({ initialValue: '# Halo', height: '100px', placeholder: 'Isi' })
   })
 
-  it('menggunakan modelValue sebagai value textarea', () => {
-    const wrapper = mount(
-      MarkdownEditor,
-      {
-        props: {
-          modelValue: 'Isi deskripsi',
-        },
-      },
-    )
-
-    expect(
-      wrapper.find('textarea').element.value,
-    ).toBe('Isi deskripsi')
+  it('emit update:modelValue saat konten berubah', () => {
+    const { emitted } = render(MarkdownEditor, { props: { modelValue: '' } })
+    const [editor] = Editor.instances
+    editor.markdown = 'konten baru'
+    editor.options.events.change()
+    expect(emitted()['update:modelValue'][0]).toEqual(['konten baru'])
   })
 
-  it('menggunakan modelValue kosong secara default', () => {
-    const wrapper = mount(
-      MarkdownEditor,
-    )
-
-    expect(
-      wrapper.find('textarea').element.value,
-    ).toBe('')
+  it('menyinkronkan perubahan prop dari luar, tanpa memanggil setMarkdown jika sama', async () => {
+    const { rerender } = render(MarkdownEditor, { props: { modelValue: 'a' } })
+    const [editor] = Editor.instances
+    editor.setMarkdown = vi.fn(editor.setMarkdown)
+    await rerender({ modelValue: 'b' })
+    expect(editor.setMarkdown).toHaveBeenCalledWith('b')
+    editor.markdown = 'c'
+    await rerender({ modelValue: 'c' })
+    expect(editor.setMarkdown).toHaveBeenCalledTimes(1)
   })
 
-  it('mengirim event update:modelValue ketika textarea berubah', async () => {
-    const wrapper = mount(
-      MarkdownEditor,
-      {
-        props: {
-          modelValue: '',
-        },
-      },
-    )
-
-    const textarea =
-      wrapper.find('textarea')
-
-    await textarea.setValue(
-      'Deskripsi baru',
-    )
-
-    expect(
-      wrapper.emitted('update:modelValue'),
-    ).toBeTruthy()
-
-    expect(
-      wrapper.emitted(
-        'update:modelValue',
-      )[0],
-    ).toEqual([
-      'Deskripsi baru',
-    ])
-  })
-
-  it('memiliki textarea sebagai elemen utama editor', () => {
-    const wrapper = mount(
-      MarkdownEditor,
-    )
-
-    expect(
-      wrapper.find('textarea').exists(),
-    ).toBe(true)
+  it('menghancurkan editor saat unmount', () => {
+    const { unmount } = render(MarkdownEditor)
+    const [editor] = Editor.instances
+    unmount()
+    expect(editor.destroy).toHaveBeenCalled()
   })
 })

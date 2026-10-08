@@ -1,31 +1,16 @@
-import { apiFetch, toFormData } from '../../../helpers/apiHelper'
+import { apiGet, apiPost, apiPut } from '../../../helpers/apiHelper'
 
-export async function getUsersApi(query = {}) {
-  return apiFetch('/users', { query })
+export const getUsers = () => apiGet('/users')
+export const getUserById = (id) => apiGet(`/users/${id}`)
+export const getProfile = () => apiGet('/users/me')
+export const updateProfile = ({ name, email }) => apiPut('/users/me', { name, email })
+
+export const uploadPhoto = (file) => {
+  const formData = new FormData()
+  formData.append('photo', file)
+  return apiPost('/users/me/photo', formData)
 }
 
-export async function getMeApi() {
-  return apiFetch('/users/me')
-}
-
-export async function updateMeApi(payload) {
-  return apiFetch('/users/me', {
-    method: 'PUT',
-    body: new URLSearchParams(payload),
-  })
-}
-
-export async function updatePhotoApi(file) {
-  const body = toFormData({ photo: file })
-  return apiFetch('/users/me/photo', {
-    method: 'POST',
-    body,
-  })
-}
-
-export async function updatePasswordApi(payload) {
-  return apiFetch('/users/me/password', {
-    method: 'PUT',
-    body: new URLSearchParams(payload),
-  })
-}
+// Sesuai dokumentasi Delcom Open API: PUT /users/password
+export const changePassword = ({ password, new_password, new_password_confirmation }) =>
+  apiPut('/users/password', { password, new_password, new_password_confirmation })

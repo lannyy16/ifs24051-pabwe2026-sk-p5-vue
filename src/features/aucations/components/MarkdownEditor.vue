@@ -1,27 +1,41 @@
-<template>
-  <div>
-    <label v-if="label" class="mb-1 block text-sm font-semibold text-slate-700">
-      {{ label }}
-    </label>
-    <textarea
-      :value="modelValue"
-      class="min-h-40 w-full rounded-xl border border-slate-200 p-4 outline-none focus:border-indigo-500"
-      @input="$emit('update:modelValue', $event.target.value)"
-    />
-  </div>
-</template>
-
 <script setup>
-defineProps({
-  modelValue: {
-    type: String,
-    default: '',
-  },
-  label: {
-    type: String,
-    default: '',
-  },
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Editor } from '@toast-ui/editor'
+import '@toast-ui/editor/dist/toastui-editor.css'
+
+const props = defineProps({
+  modelValue: { type: String, default: '' },
+  height: { type: String, default: '260px' },
+  placeholder: { type: String, default: 'Tulis deskripsi barang dengan Markdown…' },
+})
+const emit = defineEmits(['update:modelValue'])
+
+const target = ref(null)
+let editor = null
+
+onMounted(() => {
+  editor = new Editor({
+    el: target.value,
+    initialValue: props.modelValue,
+    initialEditType: 'markdown',
+    previewStyle: 'tab',
+    height: props.height,
+    placeholder: props.placeholder,
+    usageStatistics: false,
+    events: { change: () => emit('update:modelValue', editor.getMarkdown()) },
+  })
 })
 
-defineEmits(['update:modelValue'])
+watch(
+  () => props.modelValue,
+  (value) => {
+    if (value !== editor.getMarkdown()) editor.setMarkdown(value)
+  },
+)
+
+onBeforeUnmount(() => editor.destroy())
 </script>
+
+<template>
+  <div ref="target" data-testid="markdown-editor" />
+</template>

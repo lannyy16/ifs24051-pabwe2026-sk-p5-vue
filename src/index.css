@@ -1,41 +1,69 @@
 @import "tailwindcss";
 
-:root {
-  font-family: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
-  color: #172033;
-  background: #f5f7fb;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+@theme {
+  --font-sans: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-paper: #f3f5f2;
+  --color-ink: #1d2b28;
+  --color-muted: #5f6f6a;
+  --color-line: #d9e0db;
+  --color-pine-950: #0a2a25;
+  --color-pine-800: #0e3b34;
+  --color-pine-700: #14544a;
+  --color-pine-100: #dcebe7;
+  --color-brass-600: #8a6100;
+  --color-brass-500: #c9972b;
+  --color-brass-100: #f6ebd0;
+  --color-danger: #b3372f;
+  --color-danger-100: #f7e1df;
 }
 
-* {
-  box-sizing: border-box;
+@layer base {
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brass-500);
+    outline-offset: 2px;
+  }
+  button,
+  a,
+  [role="button"],
+  select,
+  label[for],
+  label[data-testid],
+  summary {
+    cursor: pointer;
+  }
 }
 
-html,
-body,
-#app {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100%;
-}
-
-body {
-  min-height: 100vh;
-  background: #f5f7fb;
-}
-
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
-a {
-  text-decoration: none;
+@layer components {
+  .field {
+    @apply w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-muted/70 focus:border-pine-700 focus:outline-none focus:ring-2 focus:ring-pine-700/20;
+  }
+  .field-error {
+    @apply mt-1 text-xs font-medium text-danger;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-semibold text-ink;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply bg-pine-800 text-white hover:bg-pine-700;
+  }
+  .btn-brass {
+    @apply bg-brass-500 text-pine-950 hover:bg-brass-600 hover:text-white;
+  }
+  .btn-ghost {
+    @apply border border-line bg-white text-ink hover:bg-pine-100;
+  }
+  .btn-danger {
+    @apply bg-danger-100 text-danger hover:bg-danger hover:text-white;
+  }
+  .panel {
+    @apply rounded-xl border border-line bg-white;
+  }
 }

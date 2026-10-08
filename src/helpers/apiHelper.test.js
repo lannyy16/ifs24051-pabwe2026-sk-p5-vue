@@ -1,631 +1,102 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest'
-
-import {
+  apiDelete,
+  apiGet,
+  apiPost,
+  apiPut,
+  buildUrl,
+  fetchApi,
   getAccessToken,
+  isSuccess,
   putAccessToken,
-  apiFetch,
-  toFormData,
+  removeAccessToken,
 } from './apiHelper'
 
+const mockFetch = (json, status = 200) => {
+  globalThis.fetch = vi.fn().mockResolvedValue({ status, json: () => Promise.resolve(json) })
+}
+
 describe('apiHelper', () => {
-  beforeEach(() => {
-    localStorage.clear()
+  beforeEach(() => mockFetch({ status: 'success' }))
 
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        status: 200,
-        json: () =>
-          Promise.resolve({
-            status: 'success',
-            data: {},
-          }),
-      }),
-    )
+  it('menyimpan, membaca, dan menghapus token', () => {
+    expect(getAccessToken()).toBeNull()
+    putAccessToken('abc')
+    expect(getAccessToken()).toBe('abc')
+    removeAccessToken()
+    expect(getAccessToken()).toBeNull()
   })
 
-  afterEach(() => {
-    vi.restoreAllMocks()
+  it('isSuccess hanya true untuk status success', () => {
+    expect(isSuccess({ status: 'success' })).toBe(true)
+    expect(isSuccess({ status: 'fail' })).toBe(false)
+    expect(isSuccess(undefined)).toBe(false)
   })
 
-  describe('getAccessToken', () => {
-    it('mengembalikan token jika tersedia', () => {
-      localStorage.setItem(
-        'access_token',
-        'token-123',
-      )
-
-      expect(getAccessToken()).toBe(
-        'token-123',
-      )
-    })
-
-    it('mengembalikan string kosong jika token tidak tersedia', () => {
-      expect(getAccessToken()).toBe('')
-    })
+  it('buildUrl menambahkan query dan mengabaikan nilai kosong', () => {
+    expect(buildUrl('/aucations')).toBe('https://open-api.delcom.org/api/v1/aucations')
+    const url = buildUrl('/aucations', { is_me: 1, is_closed: 0, a: undefined, b: null, c: '' })
+    expect(url).toBe('https://open-api.delcom.org/api/v1/aucations?is_me=1&is_closed=0')
   })
 
-  describe('putAccessToken', () => {
-    it('menyimpan token ke localStorage', () => {
-      putAccessToken('token-123')
-
-      expect(
-        localStorage.getItem('access_token'),
-      ).toBe('token-123')
-    })
-
-    it('menghapus token jika token kosong', () => {
-      localStorage.setItem(
-        'access_token',
-        'token-123',
-      )
-
-      putAccessToken('')
-
-      expect(
-        localStorage.getItem('access_token'),
-      ).toBeNull()
-    })
-
-    it('menghapus token jika token null', () => {
-      localStorage.setItem(
-        'access_token',
-        'token-123',
-      )
-
-      putAccessToken(null)
-
-      expect(
-        localStorage.getItem('access_token'),
-      ).toBeNull()
-    })
+  it('mengirim header Authorization jika token tersedia', async () => {
+    putAccessToken('tok')
+    await fetchApi('/users')
+    const [, options] = fetch.mock.calls[0]
+    expect(options.method).toBe('GET')
+    expect(options.headers.Authorization).toBe('Bearer tok')
+    expect(options.body).toBeUndefined()
   })
 
-  describe('apiFetch', () => {
-    it('melakukan GET request tanpa query parameter', async () => {
-      await apiFetch('/users')
-
-      expect(fetch).toHaveBeenCalledTimes(1)
-
-      const [url, options] =
-        fetch.mock.calls[0]
-
-      expect(url).toBe(
-        'https://open-api.delcom.org/api/v1/users',
-      )
-
-      expect(options.method).toBe('GET')
-    })
-
-    it('menambahkan query parameter yang valid', async () => {
-      await apiFetch('/aucations', {
-        query: {
-          is_me: 1,
-          is_closed: 1,
-          empty: '',
-          nullValue: null,
-          undefinedValue: undefined,
-        },
-      })
-
-      const [url] =
-        fetch.mock.calls[0]
-
-      expect(url).toBe(
-        'https://open-api.delcom.org/api/v1/aucations?is_me=1&is_closed=1',
-      )
-    })
-
-    it('mengubah query value menjadi string', async () => {
-      await apiFetch('/users', {
-        query: {
-          page: 1,
-          active: true,
-        },
-      })
-
-      const [url] =
-        fetch.mock.calls[0]
-
-      expect(url).toContain('page=1')
-      expect(url).toContain(
-        'active=true',
-      )
-    })
-
-    it('mengirim Authorization header jika token tersedia', async () => {
-      localStorage.setItem(
-        'access_token',
-        'token-123',
-      )
-
-      await apiFetch('/users')
-
-      const [, options] =
-        fetch.mock.calls[0]
-
-      expect(
-        options.headers.get(
-          'Authorization',
-        ),
-      ).toBe('Bearer token-123')
-    })
-
-    it('tidak mengirim Authorization header jika token tidak tersedia', async () => {
-      await apiFetch('/users')
-
-      const [, options] =
-        fetch.mock.calls[0]
-
-      expect(
-        options.headers.has(
-          'Authorization',
-        ),
-      ).toBe(false)
-    })
-
-    it('menambahkan Content-Type application/json untuk body biasa', async () => {
-      await apiFetch('/users', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: 'Karina',
-        }),
-      })
-
-      const [, options] =
-        fetch.mock.calls[0]
-
-      expect(
-        options.headers.get(
-          'Content-Type',
-        ),
-      ).toBe('application/json')
-    })
-
-    it('tidak mengganti Content-Type custom', async () => {
-      await apiFetch('/users', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: 'Karina',
-        }),
-        headers: {
-          'Content-Type':
-            'application/custom',
-        },
-      })
-
-      const [, options] =
-        fetch.mock.calls[0]
-
-      expect(
-        options.headers.get(
-          'Content-Type',
-        ),
-      ).toBe('application/custom')
-    })
-
-    it('tidak menambahkan Content-Type untuk FormData', async () => {
-      const formData = new FormData()
-
-      formData.append(
-        'name',
-        'Karina',
-      )
-
-      await apiFetch('/users', {
-        method: 'POST',
-        body: formData,
-      })
-
-      const [, options] =
-        fetch.mock.calls[0]
-
-      expect(
-        options.headers.has(
-          'Content-Type',
-        ),
-      ).toBe(false)
-
-      expect(options.body).toBe(
-        formData,
-      )
-    })
-
-    it('tidak menambahkan Content-Type jika tidak ada body', async () => {
-      await apiFetch('/users', {
-        method: 'GET',
-      })
-
-      const [, options] =
-        fetch.mock.calls[0]
-
-      expect(
-        options.headers.has(
-          'Content-Type',
-        ),
-      ).toBe(false)
-    })
-
-    it('mengirim method dan body sesuai options', async () => {
-      const body = JSON.stringify({
-        title: 'Laptop',
-      })
-
-      await apiFetch('/aucations', {
-        method: 'POST',
-        body,
-      })
-
-      const [, options] =
-        fetch.mock.calls[0]
-
-      expect(options.method).toBe(
-        'POST',
-      )
-
-      expect(options.body).toBe(body)
-    })
-
-    it('mengembalikan data JSON ketika response berhasil', async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          status: 200,
-          json: () =>
-            Promise.resolve({
-              status: 'success',
-              data: {
-                name: 'Karina',
-              },
-            }),
-        }),
-      )
-
-      const result =
-        await apiFetch('/users')
-
-      expect(result).toEqual({
-        status: 'success',
-        data: {
-          name: 'Karina',
-        },
-      })
-    })
-
-    it('mengembalikan null jika response bukan JSON', async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          status: 204,
-          json: () =>
-            Promise.reject(
-              new Error('Not JSON'),
-            ),
-        }),
-      )
-
-      const result =
-        await apiFetch('/users')
-
-      expect(result).toBeNull()
-    })
-
-    it('melempar error menggunakan message dari response', async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: false,
-          status: 400,
-          json: () =>
-            Promise.resolve({
-              message:
-                'Data tidak valid',
-            }),
-        }),
-      )
-
-      await expect(
-        apiFetch('/users'),
-      ).rejects.toThrow(
-        'Data tidak valid',
-      )
-    })
-
-    it('melempar error menggunakan error dari response', async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: false,
-          status: 400,
-          json: () =>
-            Promise.resolve({
-              error: 'Bad request',
-            }),
-        }),
-      )
-
-      await expect(
-        apiFetch('/users'),
-      ).rejects.toThrow(
-        'Bad request',
-      )
-    })
-
-    it('menggunakan fallback status jika response tidak memiliki message atau error', async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: false,
-          status: 500,
-          json: () =>
-            Promise.resolve({}),
-        }),
-      )
-
-      await expect(
-        apiFetch('/users'),
-      ).rejects.toThrow(
-        'Request failed with status 500',
-      )
-    })
-
-    it('menyimpan status dan data pada error HTTP', async () => {
-      const responseData = {
-        message: 'Unauthorized',
-        data: {
-          reason: 'Token expired',
-        },
-      }
-
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: false,
-          status: 401,
-          json: () =>
-            Promise.resolve(
-              responseData,
-            ),
-        }),
-      )
-
-      try {
-        await apiFetch('/users')
-      } catch (error) {
-        expect(error.status).toBe(
-          401,
-        )
-
-        expect(error.data).toEqual(
-          responseData,
-        )
-      }
-    })
-
-    it('menangani validation error berupa array', async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          status: 422,
-          json: () =>
-            Promise.resolve({
-              status: 'fail',
-              message:
-                'Validasi gagal',
-              data: {
-                title: [
-                  'Title wajib diisi',
-                  'Title terlalu pendek',
-                ],
-              },
-            }),
-        }),
-      )
-
-      await expect(
-        apiFetch('/aucations'),
-      ).rejects.toThrow(
-        'Validasi gagal\ntitle: Title wajib diisi, Title terlalu pendek',
-      )
-    })
-
-    it('menangani validation error berupa string', async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          status: 422,
-          json: () =>
-            Promise.resolve({
-              status: 'fail',
-              message:
-                'Validasi gagal',
-              data: {
-                title:
-                  'Title wajib diisi',
-              },
-            }),
-        }),
-      )
-
-      await expect(
-        apiFetch('/aucations'),
-      ).rejects.toThrow(
-        'Validasi gagal\ntitle: Title wajib diisi',
-      )
-    })
-
-    it('menggunakan Request gagal jika status fail tanpa message', async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          status: 422,
-          json: () =>
-            Promise.resolve({
-              status: 'fail',
-              data: {
-                title:
-                  'Title wajib diisi',
-              },
-            }),
-        }),
-      )
-
-      await expect(
-        apiFetch('/aucations'),
-      ).rejects.toThrow(
-        'Request gagal\ntitle: Title wajib diisi',
-      )
-    })
-
-    it('tidak menambahkan detail jika validation data kosong', async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          status: 422,
-          json: () =>
-            Promise.resolve({
-              status: 'fail',
-              message:
-                'Validasi gagal',
-              data: {},
-            }),
-        }),
-      )
-
-      await expect(
-        apiFetch('/aucations'),
-      ).rejects.toThrow(
-        'Validasi gagal',
-      )
-    })
-
-    it('menangani status fail tanpa data', async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          status: 422,
-          json: () =>
-            Promise.resolve({
-              status: 'fail',
-              message:
-                'Request gagal',
-            }),
-        }),
-      )
-
-      await expect(
-        apiFetch('/aucations'),
-      ).rejects.toThrow(
-        'Request gagal',
-      )
-    })
-
-    it('menangani status fail tanpa message dan tanpa data', async () => {
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          status: 422,
-          json: () =>
-            Promise.resolve({
-              status: 'fail',
-            }),
-        }),
-      )
-
-      await expect(
-        apiFetch('/aucations'),
-      ).rejects.toThrow(
-        'Request gagal',
-      )
-    })
-
-    it('menyimpan status dan data pada validation error', async () => {
-      const responseData = {
-        status: 'fail',
-        message:
-          'Validasi gagal',
-        data: {
-          title:
-            'Title wajib diisi',
-        },
-      }
-
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          status: 422,
-          json: () =>
-            Promise.resolve(
-              responseData,
-            ),
-        }),
-      )
-
-      try {
-        await apiFetch('/aucations')
-      } catch (error) {
-        expect(error.status).toBe(
-          422,
-        )
-
-        expect(error.data).toEqual(
-          responseData,
-        )
-      }
+  it('tidak mengirim Authorization tanpa token atau saat auth=false', async () => {
+    await fetchApi('/users')
+    expect(fetch.mock.calls[0][1].headers.Authorization).toBeUndefined()
+    putAccessToken('tok')
+    await fetchApi('/auth/login', { auth: false })
+    expect(fetch.mock.calls[1][1].headers.Authorization).toBeUndefined()
+  })
+
+  it('meng-encode body JSON dan membiarkan FormData', async () => {
+    await fetchApi('/x', { method: 'POST', body: { a: 1 } })
+    let options = fetch.mock.calls[0][1]
+    expect(options.body).toBe('{"a":1}')
+    expect(options.headers['Content-Type']).toBe('application/json')
+
+    const form = new FormData()
+    await fetchApi('/x', { method: 'POST', body: form })
+    options = fetch.mock.calls[1][1]
+    expect(options.body).toBe(form)
+    expect(options.headers['Content-Type']).toBeUndefined()
+  })
+
+  it('mengembalikan json beserta httpStatus', async () => {
+    mockFetch({ status: 'success', data: { ok: 1 } }, 200)
+    expect(await fetchApi('/x')).toEqual({ status: 'success', data: { ok: 1 }, httpStatus: 200 })
+  })
+
+  it('menghapus token saat 401', async () => {
+    putAccessToken('tok')
+    mockFetch({ status: 'fail', message: 'Unauthenticated.' }, 401)
+    const result = await fetchApi('/x')
+    expect(result.httpStatus).toBe(401)
+    expect(getAccessToken()).toBeNull()
+  })
+
+  it('mengembalikan status fail saat jaringan error', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('offline'))
+    expect(await fetchApi('/x')).toEqual({
+      status: 'fail',
+      message: 'Tidak dapat terhubung ke server',
+      httpStatus: 0,
     })
   })
 
-  describe('toFormData', () => {
-    it('membuat FormData dari object', () => {
-      const formData = toFormData({
-        title: 'Jeep',
-        description: 'Mobil',
-        start_bid: 50000000,
-      })
-
-      expect(
-        formData.get('title'),
-      ).toBe('Jeep')
-
-      expect(
-        formData.get('description'),
-      ).toBe('Mobil')
-
-      expect(
-        formData.get('start_bid'),
-      ).toBe('50000000')
-    })
-
-    it('mengabaikan nilai null dan undefined', () => {
-      const formData = toFormData({
-        title: 'Jeep',
-        empty: null,
-        undefinedValue:
-          undefined,
-      })
-
-      expect(
-        formData.get('title'),
-      ).toBe('Jeep')
-
-      expect(
-        formData.has('empty'),
-      ).toBe(false)
-
-      expect(
-        formData.has('undefinedValue'),
-      ).toBe(false)
-    })
-
-    it('menghasilkan FormData kosong jika object kosong', () => {
-      const formData = toFormData({})
-
-      expect(
-        [...formData.keys()],
-      ).toHaveLength(0)
-    })
+  it('wrapper HTTP memakai method yang benar', async () => {
+    await apiGet('/a', { q: 1 })
+    await apiPost('/a', { x: 1 }, false)
+    await apiPut('/a', { x: 1 })
+    await apiDelete('/a')
+    expect(fetch.mock.calls.map(([, o]) => o.method)).toEqual(['GET', 'POST', 'PUT', 'DELETE'])
+    expect(fetch.mock.calls[0][0]).toContain('?q=1')
   })
 })

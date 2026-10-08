@@ -1,22 +1,20 @@
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 
-export function useInput(initialValue = '') {
-  const value = ref(initialValue)
-
-  const model = computed({
-    get: () => value.value,
-    set: (newValue) => {
-      value.value = newValue
-    },
-  })
-
-  function reset() {
-    value.value = initialValue
+/**
+ * Composable input form.
+ * const [email, onEmailChange, resetEmail] = useInput('')
+ * - `email` adalah ref yang bisa dipakai pada v-model
+ * - `onChange` menerima Event (input) ataupun nilai langsung
+ */
+export function useInput(defaultValue = '') {
+  const value = ref(defaultValue)
+  const onChange = (eventOrValue) => {
+    value.value = eventOrValue?.target ? eventOrValue.target.value : eventOrValue
   }
-
-  return {
-    value,
-    model,
-    reset,
+  const reset = () => {
+    value.value = defaultValue
   }
+  return [value, onChange, reset]
 }
+
+export default useInput

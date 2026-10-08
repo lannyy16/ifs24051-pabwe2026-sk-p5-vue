@@ -1,58 +1,84 @@
-import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { getAccessToken, putAccessToken } from '../../../helpers/apiHelper'
-import { loginApi, registerApi, logoutApi } from '../api/authApi'
+import { computed, ref } from 'vue'
+import * as authApi from '../api/authApi'
+import {
+  getAccessToken,
+  isSuccess,
+  putAccessToken,
+  removeAccessToken,
+} from '../../../helpers/apiHelper'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(getAccessToken())
-  const loading = ref(false)
-  const error = ref('')
+  const isLoading = ref(false)
+  // Flag keberhasilan aksi terakhir
+  const isAuthLogin = ref(false)
+  const isAuthRegister = ref(false)
+  const isAuthLogout = ref(false)
+  // Status validasi dari server: null atau { message, errors }
+  const validation = ref(null)
 
   const isAuthenticated = computed(() => Boolean(token.value))
 
-  async function login(payload) {
-    loading.value = true
-    error.value = ''
+  function startRequest() {
+    isLoading.value = true
+    validation.value = null
+  }
 
-    try {
-      const response = await loginApi(payload)
-      token.value = getAccessToken()
-      return response
-    } catch (err) {
-      error.value = err.message
-      throw err
-    } finally {
-      loading.value = false
+  function finishRequest(response) {
+    isLoading.value = false
+    const ok = isSuccess(response)
+    validation.value = ok ? null : { message: response.message, errors: response.data ?? {} }
+    return ok
+  }
+
+  async function login(credentials) {
+    startRequest()
+    isAuthLogin.value = false
+    const response = await authApi.login(credentials)
+    if (finishRequest(response)) {
+      token.value = response.data.token
+      putAccessToken(token.value)
+      isAuthLogin.value = true
     }
+    return response
   }
 
   async function register(payload) {
-    loading.value = true
-    error.value = ''
+    startRequest()
+    isAuthRegister.value = false
+    const response = await authApi.register(payload)
+    isAuthRegister.value = finishRequest(response)
+    return response
+  }
 
-    try {
-      return await registerApi(payload)
-    } catch (err) {
-      error.value = err.message
-      throw err
-    } finally {
-      loading.value = false
-    }
+  /** Hapus sesi lokal (dipakai saat logout maupun token kedaluwarsa). */
+  function clearSession() {
+    removeAccessToken()
+    token.value = null
   }
 
   async function logout() {
-    await logoutApi()
-    token.value = ''
-    putAccessToken('')
+    startRequest()
+    isAuthLogout.value = false
+    const response = await authApi.logout()
+    clearSession()
+    finishRequest(response)
+    isAuthLogout.value = true
+    return response
   }
 
   return {
     token,
-    loading,
-    error,
+    isLoading,
+    isAuthLogin,
+    isAuthRegister,
+    isAuthLogout,
+    validation,
     isAuthenticated,
     login,
     register,
     logout,
+    clearSession,
   }
 })

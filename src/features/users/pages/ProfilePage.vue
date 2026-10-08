@@ -1,73 +1,147 @@
-<template>
-  <section class="max-w-3xl">
-    <div class="mb-6">
-      <p class="text-sm font-semibold text-indigo-600">Akun</p>
-      <h1 class="text-3xl font-bold text-slate-900">Profil Saya</h1>
-    </div>
-
-    <div class="rounded-3xl bg-white p-6 shadow-sm">
-      <div v-if="store.loading && !store.me" class="text-slate-500">
-        Memuat profil...
-      </div>
-
-      <form v-else class="space-y-5" @submit.prevent="save">
-        <div>
-          <label class="text-sm font-semibold text-slate-700">Nama</label>
-          <input
-            v-model="form.name"
-            class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3"
-          />
-        </div>
-
-        <div>
-          <label class="text-sm font-semibold text-slate-700">Username</label>
-          <input
-            :value="store.me?.username || ''"
-            disabled
-            class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3"
-          />
-        </div>
-
-        <button
-          class="rounded-xl bg-indigo-600 px-5 py-3 font-semibold text-white hover:bg-indigo-700"
-          :disabled="store.loading"
-        >
-          Simpan Perubahan
-        </button>
-      </form>
-    </div>
-  </section>
-</template>
-
 <script setup>
-import { onMounted, reactive, watch } from 'vue'
+import { ref, watch } from 'vue'
+import { Camera } from 'lucide-vue-next'
+import { useInput } from '../../../hooks/useInput'
 import { useUsersStore } from '../states/usersStore'
-import { showErrorDialog, showSuccessDialog } from '../../../helpers/toolsHelper'
+import { isSuccess } from '../../../helpers/apiHelper'
+import {
+  extractErrorMessage,
+  getInitials,
+  isValidEmail,
+  resolveImageUrl,
+  showErrorDialog,
+  showSuccessDialog,
+} from '../../../helpers/toolsHelper'
+
+const MAX_SIZE = 2 * 1024 * 1024
 
 const store = useUsersStore()
-
-const form = reactive({
-  name: '',
-})
+const [name, onNameChange] = useInput('')
+const [email, onEmailChange] = useInput('')
+const [password, , resetPassword] = useInput('')
+const [newPassword, , resetNewPassword] = useInput('')
+const [confirmation, , resetConfirmation] = useInput('')
+const profileErrors = ref({})
+const passwordErrors = ref({})
 
 watch(
-  () => store.me,
-  (value) => {
-    form.name = value?.name || ''
+  () => store.profile,
+  (profile) => {
+    if (profile) {
+      onNameChange(profile.name)
+      onEmailChange(profile.email)
+    }
   },
   { immediate: true },
 )
 
-onMounted(() => {
-  store.fetchMe().catch(() => {})
-})
+async function report(response, title) {
+  if (isSuccess(response)) {
+    await showSuccessDialog(response.message, title)
+    return true
+  }
+  showErrorDialog(extractErrorMessage(response))
+  return false
+}
 
-async function save() {
-  try {
-    await store.updateMe(form)
-    await showSuccessDialog('Berhasil', 'Profil berhasil diperbarui.')
-  } catch (error) {
-    await showErrorDialog('Gagal', error.message)
+async function onProfileSubmit() {
+  const errors = {}
+  if (!name.value.trim()) errors.name = 'Nama wajib diisi'
+  if (!isValidEmail(email.value)) errors.email = 'Format email tidak valid'
+  profileErrors.value = errors
+  if (Object.keys(errors).length > 0) return
+
+  const response = await store.updateProfile({ name: name.value.trim(), email: email.value.trim() })
+  if (await report(response, 'Profil diperbarui')) store.fetchProfile()
+}
+
+async function onPhotoChange(event) {
+  const file = event.target.files[0]
+  if (!file) return
+  if (!file.type.startsWith('image/') || file.size > MAX_SIZE) {
+    showErrorDialog('Foto harus berupa gambar dengan ukuran maksimal 2 MB')
+    return
+  }
+  const response = await store.uploadPhoto(file)
+  if (await report(response, 'Foto diperbarui')) store.fetchProfile()
+}
+
+async function onPasswordSubmit() {
+  const errors = {}
+  if (!password.value) errors.password = 'Kata sandi saat ini wajib diisi'
+  if (newPassword.value.length < 6) errors.newPassword = 'Kata sandi baru minimal 6 karakter'
+  if (confirmation.value !== newPassword.value) errors.confirmation = 'Konfirmasi tidak sama dengan kata sandi baru'
+  passwordErrors.value = errors
+  if (Object.keys(errors).length > 0) return
+
+  const response = await store.changePassword({
+    password: password.value,
+    new_password: newPassword.value,
+    new_password_confirmation: confirmation.value,
+  })
+  if (await report(response, 'Kata sandi diperbarui')) {
+    resetPassword()
+    resetNewPassword()
+    resetConfirmation()
   }
 }
 </script>
+
+<template>
+  <div class="max-w-3xl">
+    <h1 class="text-3xl font-extrabold tracking-tight">Profil Saya</h1>
+    <p class="mt-1 text-sm text-muted">Kelola data akun, foto, dan kata sandimu.</p>
+
+    <section class="panel mt-6 flex items-center gap-5 p-6">
+      <img v-if="store.profile?.photo" :src="resolveImageUrl(store.profile.photo)" alt="Foto profil" class="size-20 rounded-full object-cover" />
+      <span v-else class="grid size-20 place-items-center rounded-full bg-pine-800 text-xl font-bold text-white">{{ getInitials(store.profile?.name) }}</span>
+      <div>
+        <p class="text-lg font-extrabold">{{ store.profile?.name ?? '-' }}</p>
+        <label class="btn btn-ghost mt-2 cursor-pointer text-xs">
+          <Camera :size="14" />
+          {{ store.isPhotoChange ? 'Mengunggah…' : 'Ganti foto' }}
+          <input type="file" accept="image/*" class="sr-only" aria-label="Unggah foto profil" @change="onPhotoChange" />
+        </label>
+      </div>
+    </section>
+
+    <form class="panel mt-6 space-y-5 p-6" novalidate @submit.prevent="onProfileSubmit">
+      <h2 class="text-lg font-extrabold">Data akun</h2>
+      <div>
+        <label class="label" for="profile-name">Nama</label>
+        <input id="profile-name" v-model="name" type="text" class="field" />
+        <p v-if="profileErrors.name" class="field-error">{{ profileErrors.name }}</p>
+      </div>
+      <div>
+        <label class="label" for="profile-email">Email</label>
+        <input id="profile-email" v-model="email" type="email" class="field" />
+        <p v-if="profileErrors.email" class="field-error">{{ profileErrors.email }}</p>
+      </div>
+      <button type="submit" class="btn btn-primary" :disabled="store.isProfileChange">
+        {{ store.isProfileChange ? 'Menyimpan…' : 'Simpan profil' }}
+      </button>
+    </form>
+
+    <form class="panel mt-6 space-y-5 p-6" novalidate @submit.prevent="onPasswordSubmit">
+      <h2 class="text-lg font-extrabold">Ganti kata sandi</h2>
+      <div>
+        <label class="label" for="current-password">Kata sandi saat ini</label>
+        <input id="current-password" v-model="password" type="password" class="field" autocomplete="current-password" />
+        <p v-if="passwordErrors.password" class="field-error">{{ passwordErrors.password }}</p>
+      </div>
+      <div>
+        <label class="label" for="new-password">Kata sandi baru</label>
+        <input id="new-password" v-model="newPassword" type="password" class="field" autocomplete="new-password" />
+        <p v-if="passwordErrors.newPassword" class="field-error">{{ passwordErrors.newPassword }}</p>
+      </div>
+      <div>
+        <label class="label" for="confirm-password">Ulangi kata sandi baru</label>
+        <input id="confirm-password" v-model="confirmation" type="password" class="field" autocomplete="new-password" />
+        <p v-if="passwordErrors.confirmation" class="field-error">{{ passwordErrors.confirmation }}</p>
+      </div>
+      <button type="submit" class="btn btn-primary" :disabled="store.isPasswordChange">
+        {{ store.isPasswordChange ? 'Menyimpan…' : 'Ubah kata sandi' }}
+      </button>
+    </form>
+  </div>
+</template>

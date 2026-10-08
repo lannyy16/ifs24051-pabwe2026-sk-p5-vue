@@ -1,183 +1,43 @@
-import {
-  describe,
-  expect,
-  it,
-} from 'vitest'
-
-import {
-  mount,
-} from '@vue/test-utils'
-
+import { describe, expect, it } from 'vitest'
+import { fireEvent, screen } from '@testing-library/vue'
 import SidebarComponent from './SidebarComponent.vue'
+import { renderWithProviders } from '../../../test-utils'
+
+const link = (name) => screen.getByRole('link', { name })
 
 describe('SidebarComponent', () => {
-  const RouterLinkStub = {
-    name: 'RouterLink',
-    props: ['to'],
-    template:
-      '<a :href="to"><slot /></a>',
-  }
-
-  function mountSidebar(
-    props = {},
-  ) {
-    return mount(
-      SidebarComponent,
-      {
-        props,
-        global: {
-          stubs: {
-            RouterLink: RouterLinkStub,
-          },
-        },
-      },
-    )
-  }
-
-  it('sidebar tertutup secara default', () => {
-    const wrapper =
-      mountSidebar()
-
-    expect(
-      wrapper.classes(),
-    ).toContain(
-      '-translate-x-full',
-    )
-
-    expect(
-      wrapper.classes(),
-    ).not.toContain(
-      'translate-x-0',
-    )
+  it('menampilkan empat menu navigasi', async () => {
+    await renderWithProviders(SidebarComponent)
+    expect(link('Dashboard Lelang')).toHaveAttribute('href', '/')
+    expect(link('Lelang Saya')).toHaveAttribute('href', '/?tab=mine')
+    expect(link('Daftar Pengguna')).toHaveAttribute('href', '/users')
+    expect(link('Profil Saya')).toHaveAttribute('href', '/profile')
   })
 
-  it('sidebar terbuka ketika open bernilai true', () => {
-    const wrapper =
-      mountSidebar({
-        open: true,
-      })
-
-    expect(
-      wrapper.classes(),
-    ).toContain(
-      'translate-x-0',
-    )
-
-    expect(
-      wrapper.classes(),
-    ).not.toContain(
-      '-translate-x-full',
-    )
+  it.each([
+    ['/', 'Dashboard Lelang'],
+    ['/?tab=mine', 'Lelang Saya'],
+    ['/users', 'Daftar Pengguna'],
+    ['/profile', 'Profil Saya'],
+  ])('menandai menu aktif untuk %s', async (route, active) => {
+    await renderWithProviders(SidebarComponent, { route })
+    expect(link(active)).toHaveClass('bg-white')
+    const others = screen.getAllByRole('link').filter((el) => el !== link(active))
+    others.forEach((el) => expect(el).not.toHaveClass('bg-white'))
   })
 
-  it('menampilkan tiga link navigasi', () => {
-    const wrapper =
-      mountSidebar()
-
-    const links =
-      wrapper.findAll('a')
-
-    expect(
-      links.length,
-    ).toBe(3)
+  it('drawer tertutup secara default dan tanpa backdrop', async () => {
+    await renderWithProviders(SidebarComponent)
+    expect(screen.getByLabelText('Navigasi utama')).toHaveClass('-translate-x-full')
+    expect(screen.queryByTestId('sidebar-backdrop')).not.toBeInTheDocument()
   })
 
-  it('memiliki link Dashboard menuju halaman utama', () => {
-    const wrapper =
-      mountSidebar()
-
-    const link =
-      wrapper.findAll('a')[0]
-
-    expect(
-      link.attributes('href'),
-    ).toBe('/')
-
-    expect(
-      link.text(),
-    ).toContain('Dashboard')
-  })
-
-  it('memiliki link Pengguna menuju halaman users', () => {
-    const wrapper =
-      mountSidebar()
-
-    const link =
-      wrapper.findAll('a')[1]
-
-    expect(
-      link.attributes('href'),
-    ).toBe('/users')
-
-    expect(
-      link.text(),
-    ).toContain('Pengguna')
-  })
-
-  it('memiliki link Profil menuju halaman profile', () => {
-    const wrapper =
-      mountSidebar()
-
-    const link =
-      wrapper.findAll('a')[2]
-
-    expect(
-      link.attributes('href'),
-    ).toBe('/profile')
-
-    expect(
-      link.text(),
-    ).toContain('Profil')
-  })
-
-  it('mengirim event close ketika Dashboard diklik', async () => {
-    const wrapper =
-      mountSidebar()
-
-    const link =
-      wrapper.findAll('a')[0]
-
-    await link.trigger('click')
-
-    expect(
-      wrapper.emitted('close'),
-    ).toHaveLength(1)
-  })
-
-  it('mengirim event close ketika Pengguna diklik', async () => {
-    const wrapper =
-      mountSidebar()
-
-    const link =
-      wrapper.findAll('a')[1]
-
-    await link.trigger('click')
-
-    expect(
-      wrapper.emitted('close'),
-    ).toHaveLength(1)
-  })
-
-  it('mengirim event close ketika Profil diklik', async () => {
-    const wrapper =
-      mountSidebar()
-
-    const link =
-      wrapper.findAll('a')[2]
-
-    await link.trigger('click')
-
-    expect(
-      wrapper.emitted('close'),
-    ).toHaveLength(1)
-  })
-
-  it('memiliki elemen aside sebagai container sidebar', () => {
-    const wrapper =
-      mountSidebar()
-
-    expect(
-      wrapper.element.tagName,
-    ).toBe('ASIDE')
+  it('drawer terbuka: backdrop, tombol tutup, dan klik menu memicu close', async () => {
+    const { emitted } = await renderWithProviders(SidebarComponent, { props: { open: true } })
+    expect(screen.getByLabelText('Navigasi utama')).toHaveClass('translate-x-0')
+    await fireEvent.click(screen.getByTestId('sidebar-backdrop'))
+    await fireEvent.click(screen.getByLabelText('Tutup menu'))
+    await fireEvent.click(link('Profil Saya'))
+    expect(emitted().close).toHaveLength(3)
   })
 })

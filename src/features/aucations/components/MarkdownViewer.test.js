@@ -1,101 +1,22 @@
-import {
-  describe,
-  expect,
-  it,
-} from 'vitest'
-
-import {
-  mount,
-} from '@vue/test-utils'
-
+import { describe, expect, it } from 'vitest'
+import { render, screen } from '@testing-library/vue'
+import Viewer from '@toast-ui/editor/dist/toastui-editor-viewer'
 import MarkdownViewer from './MarkdownViewer.vue'
 
 describe('MarkdownViewer', () => {
-  it('menampilkan content ketika content diberikan', () => {
-    const wrapper = mount(
-      MarkdownViewer,
-      {
-        props: {
-          content: 'Ini adalah deskripsi lelang.',
-        },
-      },
-    )
-
-    expect(
-      wrapper.text(),
-    ).toBe(
-      'Ini adalah deskripsi lelang.',
-    )
+  it('merender konten awal (default kosong)', () => {
+    render(MarkdownViewer)
+    expect(screen.getByTestId('markdown-viewer')).toBeInTheDocument()
+    expect(Viewer.instances[0].options.initialValue).toBe('')
   })
 
-  it('menampilkan pesan default ketika content kosong', () => {
-    const wrapper = mount(
-      MarkdownViewer,
-      {
-        props: {
-          content: '',
-        },
-      },
-    )
-
-    expect(
-      wrapper.text(),
-    ).toBe(
-      'Tidak ada deskripsi.',
-    )
-  })
-
-  it('menggunakan content kosong secara default', () => {
-    const wrapper = mount(
-      MarkdownViewer,
-    )
-
-    expect(
-      wrapper.text(),
-    ).toBe(
-      'Tidak ada deskripsi.',
-    )
-  })
-
-  it('menampilkan content dengan whitespace dan newline', () => {
-    const content =
-      'Baris pertama\nBaris kedua'
-
-    const wrapper = mount(
-      MarkdownViewer,
-      {
-        props: {
-          content,
-        },
-      },
-    )
-
-    expect(
-      wrapper.text(),
-    ).toBe(content)
-  })
-
-  it('memiliki class whitespace-pre-wrap', () => {
-    const wrapper = mount(
-      MarkdownViewer,
-    )
-
-    expect(
-      wrapper.classes(),
-    ).toContain(
-      'whitespace-pre-wrap',
-    )
-  })
-
-  it('memiliki class leading-7', () => {
-    const wrapper = mount(
-      MarkdownViewer,
-    )
-
-    expect(
-      wrapper.classes(),
-    ).toContain(
-      'leading-7',
-    )
+  it('memperbarui konten saat prop berubah dan menghancurkan viewer saat unmount', async () => {
+    const { rerender, unmount } = render(MarkdownViewer, { props: { content: '# Judul' } })
+    const [viewer] = Viewer.instances
+    expect(viewer.options.initialValue).toBe('# Judul')
+    await rerender({ content: 'baru' })
+    expect(viewer.setMarkdown).toHaveBeenCalledWith('baru')
+    unmount()
+    expect(viewer.destroy).toHaveBeenCalled()
   })
 })

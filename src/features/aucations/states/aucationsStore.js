@@ -1,268 +1,90 @@
-import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import * as aucationApi from '../api/aucationApi'
+import { isSuccess } from '../../../helpers/apiHelper'
 
-import {
-  getAucationsApi,
-  getAucationApi,
-  addAucationApi,
-  updateAucationApi,
-  changeCoverApi,
-  deleteAucationApi,
-  addBidApi,
-  deleteBidApi,
-  deleteAllAucationsApi,
-} from '../api/aucationApi'
+export const useAucationsStore = defineStore('aucations', () => {
+  const aucations = ref([])
+  const aucation = ref(null)
+  const isAucation = ref(false)
 
-export const useAucationsStore =
-  defineStore(
-    'aucations',
-    () => {
-      const aucations = ref([])
-      const currentAucation = ref(null)
+  const isAucationAdd = ref(false)
+  const isAucationAdded = ref(false)
+  const isAucationChange = ref(false)
+  const isAucationChanged = ref(false)
+  const isAucationChangeCover = ref(false)
+  const isAucationChangedCover = ref(false)
+  const isAucationDelete = ref(false)
+  const isAucationDeleted = ref(false)
+  const isBidAdd = ref(false)
+  const isBidAdded = ref(false)
+  const isBidDelete = ref(false)
+  const isBidDeleted = ref(false)
+  const isAucationDeleteAll = ref(false)
+  const isAucationDeletedAll = ref(false)
 
-      const loading = ref(false)
-      const error = ref('')
+  async function fetchAucations(params) {
+    isAucation.value = true
+    const response = await aucationApi.getAucations(params)
+    aucations.value = isSuccess(response) ? response.data.aucations : []
+    isAucation.value = false
+    return response
+  }
 
-      const status = ref({
-        fetching: false,
-        adding: false,
-        updating: false,
-        deleting: false,
-        bidding: false,
-        changingCover: false,
-      })
+  async function fetchAucation(id) {
+    isAucation.value = true
+    const response = await aucationApi.getAucation(id)
+    aucation.value = isSuccess(response) ? response.data.aucation : null
+    isAucation.value = false
+    return response
+  }
 
-      async function fetchAucations(
-        query = {},
-      ) {
-        loading.value = true
-        status.value.fetching = true
-        error.value = ''
+  // Membungkus aksi mutasi: menyalakan flag "sedang berjalan" lalu flag "berhasil".
+  function track(loading, done, call) {
+    return async (...args) => {
+      loading.value = true
+      done.value = false
+      const response = await call(...args)
+      loading.value = false
+      done.value = isSuccess(response)
+      return response
+    }
+  }
 
-        try {
-          const response =
-            await getAucationsApi(
-              query,
-            )
+  const addAucation = track(isAucationAdd, isAucationAdded, (p) => aucationApi.addAucation(p))
+  const changeAucation = track(isAucationChange, isAucationChanged, (id, p) => aucationApi.changeAucation(id, p))
+  const changeCover = track(isAucationChangeCover, isAucationChangedCover, (id, f) => aucationApi.changeCover(id, f))
+  const deleteAucation = track(isAucationDelete, isAucationDeleted, (id) => aucationApi.deleteAucation(id))
+  const addBid = track(isBidAdd, isBidAdded, (id, bid) => aucationApi.addBid(id, bid))
+  const deleteBid = track(isBidDelete, isBidDeleted, (id) => aucationApi.deleteBid(id))
+  const deleteAllAucations = track(isAucationDeleteAll, isAucationDeletedAll, () => aucationApi.deleteAllAucations())
 
-          aucations.value =
-            response?.data?.aucations ||
-            []
-
-          return response
-        } catch (err) {
-          error.value =
-            err.message ||
-            'Gagal mengambil data lelang'
-
-          throw err
-        } finally {
-          loading.value = false
-          status.value.fetching = false
-        }
-      }
-
-      async function fetchAucation(id) {
-        loading.value = true
-        error.value = ''
-
-        try {
-          const response =
-            await getAucationApi(id)
-
-          currentAucation.value =
-            response?.data?.aucation ||
-            null
-
-          return response
-        } catch (err) {
-          error.value =
-            err.message ||
-            'Gagal mengambil detail lelang'
-
-          throw err
-        } finally {
-          loading.value = false
-        }
-      }
-
-      async function addAucation(
-        payload,
-      ) {
-        status.value.adding = true
-        error.value = ''
-
-        try {
-          const response =
-            await addAucationApi(
-              payload,
-            )
-
-          const aucationId =
-            response?.data?.aucation_id ||
-            response?.data?.id ||
-            response?.aucation_id
-
-          if (!aucationId) {
-            throw new Error(
-              'ID lelang tidak ditemukan dari response API',
-            )
-          }
-
-          if (payload.cover) {
-            await changeCoverApi(
-              aucationId,
-              payload.cover,
-            )
-          }
-
-          return response
-        } catch (err) {
-          error.value =
-            err.message ||
-            'Gagal menambahkan lelang'
-
-          throw err
-        } finally {
-          status.value.adding = false
-        }
-      }
-
-      async function updateAucation(
-        id,
-        payload,
-      ) {
-        status.value.updating = true
-        error.value = ''
-
-        try {
-          return await updateAucationApi(
-            id,
-            payload,
-          )
-        } catch (err) {
-          error.value =
-            err.message ||
-            'Gagal mengubah data lelang'
-
-          throw err
-        } finally {
-          status.value.updating = false
-        }
-      }
-
-      async function changeCover(
-        id,
-        file,
-      ) {
-        status.value.changingCover = true
-        error.value = ''
-
-        try {
-          return await changeCoverApi(
-            id,
-            file,
-          )
-        } catch (err) {
-          error.value =
-            err.message ||
-            'Gagal mengubah cover'
-
-          throw err
-        } finally {
-          status.value.changingCover = false
-        }
-      }
-
-      async function deleteAucation(id) {
-        status.value.deleting = true
-        error.value = ''
-
-        try {
-          return await deleteAucationApi(
-            id,
-          )
-        } catch (err) {
-          error.value =
-            err.message ||
-            'Gagal menghapus lelang'
-
-          throw err
-        } finally {
-          status.value.deleting = false
-        }
-      }
-
-      async function addBid(id, bid) {
-        status.value.bidding = true
-        error.value = ''
-
-        try {
-          return await addBidApi(
-            id,
-            bid,
-          )
-        } catch (err) {
-          error.value =
-            err.message ||
-            'Gagal mengajukan bid'
-
-          throw err
-        } finally {
-          status.value.bidding = false
-        }
-      }
-
-      async function deleteBid(id) {
-        status.value.bidding = true
-        error.value = ''
-
-        try {
-          return await deleteBidApi(id)
-        } catch (err) {
-          error.value =
-            err.message ||
-            'Gagal menghapus bid'
-
-          throw err
-        } finally {
-          status.value.bidding = false
-        }
-      }
-
-      async function deleteAllAucations() {
-        status.value.deleting = true
-        error.value = ''
-
-        try {
-          return await deleteAllAucationsApi()
-        } catch (err) {
-          error.value =
-            err.message ||
-            'Gagal menghapus semua lelang'
-
-          throw err
-        } finally {
-          status.value.deleting = false
-        }
-      }
-
-      return {
-        aucations,
-        currentAucation,
-        loading,
-        error,
-        status,
-
-        fetchAucations,
-        fetchAucation,
-        addAucation,
-        updateAucation,
-        changeCover,
-        deleteAucation,
-        addBid,
-        deleteBid,
-        deleteAllAucations,
-      }
-    },
-  )
+  return {
+    aucations,
+    aucation,
+    isAucation,
+    isAucationAdd,
+    isAucationAdded,
+    isAucationChange,
+    isAucationChanged,
+    isAucationChangeCover,
+    isAucationChangedCover,
+    isAucationDelete,
+    isAucationDeleted,
+    isBidAdd,
+    isBidAdded,
+    isBidDelete,
+    isBidDeleted,
+    isAucationDeleteAll,
+    isAucationDeletedAll,
+    fetchAucations,
+    fetchAucation,
+    addAucation,
+    changeAucation,
+    changeCover,
+    deleteAucation,
+    addBid,
+    deleteBid,
+    deleteAllAucations,
+  }
+})

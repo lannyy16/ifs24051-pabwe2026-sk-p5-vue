@@ -1,211 +1,76 @@
-import {
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest'
-
-import {
-  mount,
-} from '@vue/test-utils'
-
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen, waitFor } from '@testing-library/vue'
+import Swal from 'sweetalert2'
 import NavbarComponent from './NavbarComponent.vue'
+import * as authApi from '../../auth/api/authApi'
+import { getAccessToken, putAccessToken } from '../../../helpers/apiHelper'
+import { renderWithProviders } from '../../../test-utils'
 
-const pushMock = vi.fn()
+vi.mock('../../auth/api/authApi')
 
-const logoutMock = vi.fn()
-
-vi.mock('vue-router', () => ({
-  RouterLink: {
-    name: 'RouterLink',
-    props: ['to'],
-    template:
-      '<a :href="to"><slot /></a>',
-  },
-
-  useRouter: () => ({
-    push: pushMock,
-  }),
-}))
-
-vi.mock('../../auth/states/authStore', () => ({
-  useAuthStore: () => ({
-    logout: logoutMock,
-  }),
-}))
+const withProfile = { users: { profile: { id: 1, name: 'Abdullah Ubaid', photo: 'img/profile/1.png' } } }
 
 describe('NavbarComponent', () => {
-  beforeEach(() => {
-    pushMock.mockReset()
-    logoutMock.mockReset()
+  beforeEach(() => authApi.logout.mockResolvedValue({ status: 'success' }))
 
-    logoutMock.mockResolvedValue(undefined)
-    pushMock.mockResolvedValue(undefined)
+  it('menampilkan nama dan foto profil', async () => {
+    await renderWithProviders(NavbarComponent, { initialState: withProfile })
+    expect(screen.getByText('Abdullah Ubaid')).toBeInTheDocument()
+    expect(screen.getByAltText('Foto profil')).toHaveAttribute('src', 'https://open-api.delcom.org/img/profile/1.png')
   })
 
-  it('menampilkan nama aplikasi', () => {
-    const wrapper = mount(
-      NavbarComponent,
-    )
-
-    expect(
-      wrapper.text(),
-    ).toContain('Delcom Auction')
+  it('tanpa foto: inisial; tanpa profil: nama Pengguna', async () => {
+    const { unmount } = await renderWithProviders(NavbarComponent, {
+      initialState: { users: { profile: { id: 1, name: 'Abdullah Ubaid', photo: '' } } },
+    })
+    expect(screen.getByText('AU')).toBeInTheDocument()
+    unmount()
+    await renderWithProviders(NavbarComponent)
+    expect(screen.getByText('Pengguna')).toBeInTheDocument()
+    expect(screen.getByText('?')).toBeInTheDocument()
   })
 
-  it('menampilkan tombol Keluar', () => {
-    const wrapper = mount(
-      NavbarComponent,
-    )
-
-    const buttons =
-      wrapper.findAll('button')
-
-    expect(
-      buttons.some(
-        (button) =>
-          button.text() === 'Keluar',
-      ),
-    ).toBe(true)
+  it('tombol menu mengirim event toggle-sidebar', async () => {
+    const { emitted } = await renderWithProviders(NavbarComponent)
+    await fireEvent.click(screen.getByLabelText('Buka menu'))
+    expect(emitted()['toggle-sidebar']).toHaveLength(1)
   })
 
-  it('memiliki RouterLink menuju halaman utama', () => {
-    const wrapper = mount(
-      NavbarComponent,
-    )
+  it('menu cepat dapat dibuka, ditutup, dan tertutup setelah memilih tautan', async () => {
+    await renderWithProviders(NavbarComponent, { initialState: withProfile })
+    const toggle = screen.getByLabelText('Menu akun')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    await fireEvent.click(toggle)
+    expect(screen.getByRole('menuitem', { name: /profil saya/i })).toHaveAttribute('href', '/profile')
+    expect(screen.getByRole('menuitem', { name: /pasang lelang/i })).toHaveAttribute('href', '/?add=1')
+    await fireEvent.click(toggle)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
 
-    const link =
-      wrapper.findComponent(
-        {
-          name: 'RouterLink',
-        },
-      )
-
-    expect(
-      link.exists(),
-    ).toBe(true)
-
-    expect(
-      link.props('to'),
-    ).toBe('/')
+    await fireEvent.click(toggle)
+    await fireEvent.click(screen.getByRole('menuitem', { name: /profil saya/i }))
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    await fireEvent.click(toggle)
+    await fireEvent.click(screen.getByRole('menuitem', { name: /pasang lelang/i }))
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
-  it('menampilkan tombol toggle sidebar', () => {
-    const wrapper = mount(
-      NavbarComponent,
-    )
-
-    const buttons =
-      wrapper.findAll('button')
-
-    expect(
-      buttons.length,
-    ).toBe(2)
-
-    expect(
-      buttons[0].text(),
-    ).toContain('☰')
+  it('logout terkonfirmasi menghapus sesi dan menuju halaman login', async () => {
+    putAccessToken('TOK')
+    const { router } = await renderWithProviders(NavbarComponent, { initialState: withProfile })
+    await fireEvent.click(screen.getByRole('button', { name: /keluar/i }))
+    await waitFor(() => expect(router.currentRoute.value.path).toBe('/auth/login'))
+    expect(authApi.logout).toHaveBeenCalled()
+    expect(getAccessToken()).toBeNull()
   })
 
-  it('mengirim event toggle-sidebar ketika tombol menu diklik', async () => {
-    const wrapper = mount(
-      NavbarComponent,
-    )
-
-    const buttons =
-      wrapper.findAll('button')
-
-    await buttons[0].trigger('click')
-
-    expect(
-      wrapper.emitted(
-        'toggle-sidebar',
-      ),
-    ).toBeTruthy()
-
-    expect(
-      wrapper.emitted(
-        'toggle-sidebar',
-      ).length,
-    ).toBe(1)
-  })
-
-  it('memanggil logout dan mengarahkan ke halaman login', async () => {
-    const wrapper = mount(
-      NavbarComponent,
-    )
-
-    const logoutButton =
-      wrapper
-        .findAll('button')
-        .find(
-          (button) =>
-            button.text() === 'Keluar',
-        )
-
-    await logoutButton.trigger('click')
-
-    expect(
-      logoutMock,
-    ).toHaveBeenCalledTimes(1)
-
-    expect(
-      pushMock,
-    ).toHaveBeenCalledTimes(1)
-
-    expect(
-      pushMock,
-    ).toHaveBeenCalledWith(
-      '/auth/login',
-    )
-  })
-
-  it('menunggu proses logout sebelum navigasi', async () => {
-    let resolveLogout
-
-    logoutMock.mockImplementation(
-      () =>
-        new Promise(
-          (resolve) => {
-            resolveLogout = resolve
-          },
-        ),
-    )
-
-    const wrapper = mount(
-      NavbarComponent,
-    )
-
-    const logoutButton =
-      wrapper
-        .findAll('button')
-        .find(
-          (button) =>
-            button.text() === 'Keluar',
-        )
-
-    const clickPromise =
-      logoutButton.trigger('click')
-
-    await Promise.resolve()
-
-    expect(
-      logoutMock,
-    ).toHaveBeenCalledTimes(1)
-
-    expect(
-      pushMock,
-    ).not.toHaveBeenCalled()
-
-    resolveLogout()
-
-    await clickPromise
-
-    expect(
-      pushMock,
-    ).toHaveBeenCalledWith(
-      '/auth/login',
-    )
+  it('logout dibatalkan tidak melakukan apa pun', async () => {
+    putAccessToken('TOK')
+    Swal.fire.mockResolvedValueOnce({ isConfirmed: false })
+    const { router } = await renderWithProviders(NavbarComponent, { initialState: withProfile })
+    await fireEvent.click(screen.getByRole('button', { name: /keluar/i }))
+    await waitFor(() => expect(Swal.fire).toHaveBeenCalled())
+    expect(authApi.logout).not.toHaveBeenCalled()
+    expect(getAccessToken()).toBe('TOK')
+    expect(router.currentRoute.value.path).toBe('/')
   })
 })

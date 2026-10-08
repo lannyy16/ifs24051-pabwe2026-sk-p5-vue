@@ -1,13 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ifs24051-pabwe2026-sk-p5-vue</title>
+    <title>Delcom Auction</title>
+    <meta name="description" content="Delcom Auction: pasang barang, pantau tawaran, dan menangkan lelang sebelum waktu habis." />
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <!-- Shell statis: diganti Vue saat mount. Memastikan <main> dan <h1> selalu ada sebelum chunk rute selesai dimuat. -->
+      <main class="grid min-h-screen place-items-center px-6 text-center">
+        <div>
+          <h1 class="text-2xl font-extrabold tracking-tight">Delcom Auction</h1>
+          <p class="mt-2 text-sm text-muted">Memuat aplikasi…</p>
+        </div>
+      </main>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

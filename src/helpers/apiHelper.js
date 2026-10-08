@@ -1,182 +1,55 @@
-const BASE_URL =
-  import.meta.env.VITE_DELCOM_BASEURL ||
-  'https://open-api.delcom.org/api/v1'
+const TOKEN_KEY = 'delcom_access_token'
 
-export function getAccessToken() {
-  return localStorage.getItem('access_token') || ''
-}
+export const getAccessToken = () => localStorage.getItem(TOKEN_KEY)
+export const putAccessToken = (token) => localStorage.setItem(TOKEN_KEY, token)
+export const removeAccessToken = () => localStorage.removeItem(TOKEN_KEY)
 
-export function putAccessToken(token) {
-  if (token) {
-    localStorage.setItem('access_token', token)
-  } else {
-    localStorage.removeItem('access_token')
-  }
-}
+export const isSuccess = (response) => response?.status === 'success'
 
-function buildQuery(query = {}) {
-  const params = new URLSearchParams()
-
-  Object.entries(query).forEach(([key, value]) => {
-    if (
-      value !== undefined &&
-      value !== null &&
-      value !== ''
-    ) {
-      params.append(key, value)
+/** Membangun URL lengkap beserta query parameters (nilai kosong diabaikan). */
+export function buildUrl(path, params) {
+  const url = new URL(`${DELCOM_BASEURL}${path}`)
+  Object.entries(params ?? {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      url.searchParams.set(key, value)
     }
   })
-
-  const queryString = params.toString()
-
-  return queryString ? `?${queryString}` : ''
+  return url.toString()
 }
 
-async function parseResponse(response) {
-  const contentType =
-    response.headers.get('content-type') || ''
+/**
+ * Wrapper fetch untuk REST API Delcom.
+ * - Header Authorization: Bearer <token> otomatis (jika ada token dan auth = true)
+ * - body berupa FormData dikirim apa adanya, selain itu di-encode sebagai JSON
+ * - Selalu mengembalikan objek { status, message, data } (tidak pernah throw)
+ */
+export async function fetchApi(path, { method = 'GET', params, body, auth = true } = {}) {
+  const headers = { Accept: 'application/json' }
+  const options = { method, headers }
 
-  if (contentType.includes('application/json')) {
-    return response.json()
+  if (auth) {
+    const token = getAccessToken()
+    if (token) headers.Authorization = `Bearer ${token}`
   }
 
-  return response.text()
+  if (body instanceof FormData) {
+    options.body = body
+  } else if (body !== undefined) {
+    headers['Content-Type'] = 'application/json'
+    options.body = JSON.stringify(body)
+  }
+
+  try {
+    const response = await fetch(buildUrl(path, params), options)
+    const json = await response.json()
+    if (response.status === 401) removeAccessToken()
+    return { ...json, httpStatus: response.status }
+  } catch {
+    return { status: 'fail', message: 'Tidak dapat terhubung ke server', httpStatus: 0 }
+  }
 }
 
-function getErrorMessage(data, fallback) {
-  if (!data) {
-    return fallback
-  }
-
-  if (typeof data === 'string') {
-    return data || fallback
-  }
-
-  if (data.message) {
-    let message = data.message
-
-    if (
-      data.data &&
-      data.data.field &&
-      typeof data.data.field === 'object'
-    ) {
-      const fieldMessages = []
-
-      Object.values(data.data.field).forEach(
-        (messages) => {
-          if (Array.isArray(messages)) {
-            fieldMessages.push(...messages)
-          } else if (messages) {
-            fieldMessages.push(messages)
-          }
-        },
-      )
-
-      if (fieldMessages.length > 0) {
-        message += `: ${fieldMessages.join(', ')}`
-      }
-    }
-
-    return message
-  }
-
-  return fallback
-}
-
-export async function apiFetch(
-  path,
-  options = {},
-) {
-  const {
-    query = {},
-    headers = {},
-    body,
-    ...fetchOptions
-  } = options
-
-  const token = getAccessToken()
-
-  const requestHeaders = {
-    Accept: 'application/json',
-    ...headers,
-  }
-
-  if (token) {
-    requestHeaders.Authorization =
-      `Bearer ${token}`
-  }
-
-  const isFormData =
-    body instanceof FormData
-
-  if (
-    body !== undefined &&
-    !isFormData &&
-    !requestHeaders['Content-Type']
-  ) {
-    requestHeaders['Content-Type'] =
-      'application/json'
-  }
-
-  const url =
-    `${BASE_URL}${path}${buildQuery(query)}`
-
-  const response = await fetch(url, {
-    ...fetchOptions,
-    headers: requestHeaders,
-    body,
-  })
-
-  const data = await parseResponse(response)
-
-  if (!response.ok) {
-    const error = new Error(
-      getErrorMessage(
-        data,
-        `Request gagal dengan status ${response.status}`,
-      ),
-    )
-
-    error.status = response.status
-    error.data = data
-
-    throw error
-  }
-
-  if (
-    data &&
-    typeof data === 'object' &&
-    data.status === 'fail'
-  ) {
-    const error = new Error(
-      getErrorMessage(
-        data,
-        'Request gagal',
-      ),
-    )
-
-    error.status = response.status
-    error.data = data
-
-    throw error
-  }
-
-  return data
-}
-
-export function toFormData(data = {}) {
-  const formData = new FormData()
-
-  Object.entries(data).forEach(
-    ([key, value]) => {
-      if (
-        value !== undefined &&
-        value !== null
-      ) {
-        formData.append(key, value)
-      }
-    },
-  )
-
-  return formData
-}
+export const apiGet = (path, params) => fetchApi(path, { params })
+export const apiPost = (path, body, auth) => fetchApi(path, { method: 'POST', body, auth })
+export const apiPut = (path, body) => fetchApi(path, { method: 'PUT', body })
+export const apiDelete = (path) => fetchApi(path, { method: 'DELETE' })
