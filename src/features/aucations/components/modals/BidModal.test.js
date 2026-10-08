@@ -27,9 +27,9 @@ describe('BidModal', () => {
     expect(screen.getByText('Keyboard Gaming RGB')).toBeInTheDocument()
   })
 
-  it('minimum sama dengan harga awal jika belum ada tawaran', async () => {
+  it('minimum harus lebih tinggi dari harga awal jika belum ada tawaran', async () => {
     await open(makeAucation({ start_bid: 75000, bids: [] }))
-    expect(screen.getByText(/Minimal.*75\.000/)).toBeInTheDocument()
+    expect(screen.getByText(/Minimal.*75\.001/)).toBeInTheDocument()
   })
 
   it('validasi: kosong dan di bawah minimum', async () => {
@@ -39,6 +39,14 @@ describe('BidModal', () => {
     await fireEvent.update(amount(), '100000')
     await send()
     expect(screen.getByText(/Tawaran minimal.*150\.001/)).toBeInTheDocument()
+    expect(api.addBid).not.toHaveBeenCalled()
+  })
+
+  it('menolak tawaran yang sama dengan tawaran tertinggi saat ini', async () => {
+    await open(makeAucation({ id: 5, start_bid: 75000, bids: [] }))
+    await fireEvent.update(amount(), '75000')
+    await send()
+    expect(screen.getByText(/Tawaran minimal.*75\.001/)).toBeInTheDocument()
     expect(api.addBid).not.toHaveBeenCalled()
   })
 

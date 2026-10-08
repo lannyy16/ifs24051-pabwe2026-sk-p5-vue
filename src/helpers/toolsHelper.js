@@ -61,15 +61,19 @@ export function getTimeLeft(closedAt, now = new Date()) {
   return `${minutes} menit`
 }
 
-/** Tawaran tertinggi saat ini (atau harga awal jika belum ada tawaran). */
+/**
+ * Tawaran tertinggi saat ini (atau harga awal jika belum ada tawaran).
+ * `highest_bid` diisi store untuk daftar lelang, karena API daftar hanya mengirim id tawaran.
+ */
 export const getHighestBid = (aucation) =>
-  Math.max(Number(aucation?.start_bid) || 0, ...(aucation?.bids ?? []).map((b) => Number(b?.bid) || 0))
+  Math.max(
+    Number(aucation?.start_bid) || 0,
+    Number(aucation?.highest_bid) || 0,
+    ...(aucation?.bids ?? []).map((b) => Number(b?.bid) || 0),
+  )
 
-/** Nominal minimum untuk tawaran berikutnya. */
-export function getMinimumBid(aucation) {
-  const hasBids = (aucation?.bids ?? []).length > 0
-  return hasBids ? getHighestBid(aucation) + 1 : Number(aucation?.start_bid) || 0
-}
+/** Nominal minimum tawaran berikutnya: harus lebih tinggi dari tawaran tertinggi saat ini. */
+export const getMinimumBid = (aucation) => getHighestBid(aucation) + 1
 
 /** "2026-12-31T23:59" (input datetime-local) -> "2026-12-31 23:59:00". */
 export function toApiTimestamp(value) {

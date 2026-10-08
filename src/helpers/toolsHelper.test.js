@@ -121,12 +121,13 @@ describe('tawaran', () => {
     expect(getHighestBid(null)).toBe(0)
     expect(getHighestBid({ start_bid: 100 })).toBe(100)
     expect(getHighestBid({ start_bid: 100, bids: [2] })).toBe(100)
+    expect(getHighestBid({ start_bid: 100, highest_bid: 250, bids: [2] })).toBe(250)
     expect(getHighestBid({ start_bid: 100, bids: [{ bid: 300 }, { bid: 200 }] })).toBe(300)
   })
 
   it('getMinimumBid', () => {
-    expect(getMinimumBid(undefined)).toBe(0)
-    expect(getMinimumBid({ start_bid: 100, bids: [] })).toBe(100)
+    expect(getMinimumBid(undefined)).toBe(1)
+    expect(getMinimumBid({ start_bid: 100, bids: [] })).toBe(101)
     expect(getMinimumBid({ start_bid: 100, bids: [{ bid: 300 }] })).toBe(301)
   })
 })

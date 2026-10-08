@@ -23,6 +23,31 @@ describe('aucationsStore', () => {
     expect(store.aucations).toEqual([])
   })
 
+  it('fetchAucations mengisi tawaran tertinggi dari detail untuk bids berupa id', async () => {
+    const store = useAucationsStore()
+    api.getAucations.mockResolvedValue({
+      status: 'success',
+      data: {
+        aucations: [
+          { id: 1, start_bid: 100, bids: [7, 8] },
+          { id: 2, start_bid: 100, bids: [9] },
+          { id: 3, start_bid: 100, bids: [{ id: 1, bid: 500 }] },
+          { id: 4, start_bid: 100 },
+        ],
+      },
+    })
+    api.getAucation.mockImplementation(async (id) =>
+      id === 1
+        ? { status: 'success', data: { aucation: { id: 1, start_bid: 100, bids: [{ bid: 300 }, { bid: 900 }] } } }
+        : { status: 'fail' },
+    )
+    await store.fetchAucations()
+    expect(api.getAucation).toHaveBeenCalledTimes(2)
+    expect(store.aucations[0].highest_bid).toBe(900)
+    expect(store.aucations[1].highest_bid).toBeUndefined()
+    expect(store.aucations[2].highest_bid).toBeUndefined()
+  })
+
   it('fetchAucation sukses dan gagal', async () => {
     const store = useAucationsStore()
     api.getAucation.mockResolvedValue({ status: 'success', data: { aucation: { id: 3 } } })

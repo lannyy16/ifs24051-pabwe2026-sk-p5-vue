@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as aucationApi from '../api/aucationApi'
 import { isSuccess } from '../../../helpers/apiHelper'
+import { getHighestBid } from '../../../helpers/toolsHelper'
 
 export const useAucationsStore = defineStore('aucations', () => {
   const aucations = ref([])
@@ -23,11 +24,21 @@ export const useAucationsStore = defineStore('aucations', () => {
   const isAucationDeleteAll = ref(false)
   const isAucationDeletedAll = ref(false)
 
+  // API daftar hanya mengirim id tawaran (bids: [2]); tawaran tertinggi diambil dari detail lelang.
+  async function loadHighestBids() {
+    const targets = aucations.value.filter((item) => (item.bids ?? []).some((bid) => typeof bid !== 'object'))
+    const details = await Promise.all(targets.map((item) => aucationApi.getAucation(item.id)))
+    details.forEach((response, index) => {
+      if (isSuccess(response)) targets[index].highest_bid = getHighestBid(response.data.aucation)
+    })
+  }
+
   async function fetchAucations(params) {
     isAucation.value = true
     const response = await aucationApi.getAucations(params)
     aucations.value = isSuccess(response) ? response.data.aucations : []
     isAucation.value = false
+    await loadHighestBids()
     return response
   }
 

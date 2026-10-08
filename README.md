@@ -10,7 +10,7 @@ lucide-vue-next · @toast-ui/editor · Vitest (coverage v8, threshold 100%).
 
 ```bash
 bun install
-cp .env.example .env     # sudah tersedia .env bawaan
+cp .env.example .env     # berkas .env bawaan juga sudah disertakan
 bun run dev              # http://localhost:3000 (port dari APP_PORT)
 bun run test             # unit + integration test
 bun run test:coverage    # coverage v8 (threshold 100%)
@@ -43,8 +43,9 @@ src/
 
 - `is_closed` mengikuti dokumentasi API: `1` = lelang berlangsung, `0` = lelang ditutup.
 - Ganti kata sandi memakai `PUT /users/password` (sesuai dokumentasi API; modul menulis `/users/me/password`).
-- Daftar lelang dari API hanya mengirim id pada `bids`; tawaran tertinggi di kartu dihitung dari
-  data yang tersedia (fallback ke harga awal). Detail lelang memuat riwayat bid lengkap.
+- Daftar lelang dari API hanya mengirim id pada `bids`; `aucationsStore.fetchAucations` mengambil detail
+  lelang yang punya tawaran (`GET /aucations/:id`) untuk menghitung tawaran tertinggi pada kartu.
+- Nominal bid harus lebih tinggi dari tawaran tertinggi saat ini (jika belum ada tawaran: lebih tinggi dari harga awal).
 - Token disimpan di `localStorage`; respons 401 otomatis menghapus token dan kembali ke login.
 
 ## GitHub
