@@ -1,7 +1,12 @@
-import { apiFetch, toFormData } from '../../../helpers/apiHelper'
+import {
+  apiFetch,
+  toFormData,
+} from '../../../helpers/apiHelper'
 
 export async function getAucationsApi(query = {}) {
-  return apiFetch('/aucations', { query })
+  return apiFetch('/aucations', {
+    query,
+  })
 }
 
 export async function getAucationApi(id) {
@@ -9,23 +14,55 @@ export async function getAucationApi(id) {
 }
 
 export async function addAucationApi(payload) {
+  const {
+    title,
+    description,
+    start_bid,
+    closed_at,
+  } = payload
+
   return apiFetch('/aucations', {
     method: 'POST',
-    body: toFormData(payload),
+    body: JSON.stringify({
+      title,
+      description,
+      start_bid: Number(start_bid),
+      closed_at,
+    }),
   })
 }
 
-export async function updateAucationApi(id, payload) {
+export async function updateAucationApi(
+  id,
+  payload,
+) {
+  const {
+    title,
+    description,
+    start_bid,
+    closed_at,
+  } = payload
+
   return apiFetch(`/aucations/${id}`, {
     method: 'PUT',
-    body: new URLSearchParams(payload),
+    body: JSON.stringify({
+      title,
+      description,
+      start_bid: Number(start_bid),
+      closed_at,
+    }),
   })
 }
 
-export async function changeCoverApi(id, file) {
+export async function changeCoverApi(
+  id,
+  file,
+) {
   return apiFetch(`/aucations/${id}/cover`, {
     method: 'POST',
-    body: toFormData({ cover: file }),
+    body: toFormData({
+      cover: file,
+    }),
   })
 }
 
@@ -38,7 +75,9 @@ export async function deleteAucationApi(id) {
 export async function addBidApi(id, bid) {
   return apiFetch(`/aucations/${id}/bids`, {
     method: 'POST',
-    body: new URLSearchParams({ bid: String(bid) }),
+    body: JSON.stringify({
+      bid: Number(bid),
+    }),
   })
 }
 

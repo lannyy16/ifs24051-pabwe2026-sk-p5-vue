@@ -26,23 +26,41 @@ export async function apiFetch(path, options = {}) {
   const params = new URLSearchParams()
 
   Object.entries(query).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== ''
+    ) {
       params.append(key, String(value))
     }
   })
 
   const queryString = params.toString()
-  const url = `${BASE_URL}${path}${queryString ? `?${queryString}` : ''}`
+
+  const url = `${BASE_URL}${path}${
+    queryString ? `?${queryString}` : ''
+  }`
 
   const finalHeaders = new Headers(headers)
+
   const token = getAccessToken()
 
   if (token) {
-    finalHeaders.set('Authorization', `Bearer ${token}`)
+    finalHeaders.set(
+      'Authorization',
+      `Bearer ${token}`,
+    )
   }
 
-  if (body && !(body instanceof FormData) && !finalHeaders.has('Content-Type')) {
-    finalHeaders.set('Content-Type', 'application/x-www-form-urlencoded')
+  if (
+    body &&
+    !(body instanceof FormData) &&
+    !finalHeaders.has('Content-Type')
+  ) {
+    finalHeaders.set(
+      'Content-Type',
+      'application/json',
+    )
   }
 
   const response = await fetch(url, {
@@ -66,8 +84,39 @@ export async function apiFetch(path, options = {}) {
       `Request failed with status ${response.status}`
 
     const error = new Error(message)
+
     error.status = response.status
     error.data = data
+
+    throw error
+  }
+
+  if (data?.status === 'fail') {
+    const validationData = data?.data
+
+    let message = data?.message || 'Request gagal'
+
+    if (validationData) {
+      const details = Object.entries(validationData)
+        .map(([field, messages]) => {
+          const text = Array.isArray(messages)
+            ? messages.join(', ')
+            : String(messages)
+
+          return `${field}: ${text}`
+        })
+        .join('\n')
+
+      if (details) {
+        message += `\n${details}`
+      }
+    }
+
+    const error = new Error(message)
+
+    error.status = response.status
+    error.data = data
+
     throw error
   }
 
@@ -78,7 +127,10 @@ export function toFormData(data = {}) {
   const formData = new FormData()
 
   Object.entries(data).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
+    if (
+      value !== undefined &&
+      value !== null
+    ) {
       formData.append(key, value)
     }
   })
