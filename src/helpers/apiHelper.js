@@ -1,7 +1,6 @@
 const BASE_URL =
-  typeof DELCOM_BASEURL !== 'undefined'
-    ? DELCOM_BASEURL
-    : 'https://open-api.delcom.org/api/v1'
+  import.meta.env.VITE_DELCOM_BASEURL ||
+  'https://open-api.delcom.org/api/v1'
 
 export function getAccessToken() {
   return localStorage.getItem('access_token') || ''
@@ -15,14 +14,7 @@ export function putAccessToken(token) {
   }
 }
 
-export async function apiFetch(path, options = {}) {
-  const {
-    method = 'GET',
-    query = {},
-    body,
-    headers = {},
-  } = options
-
+function buildQuery(query = {}) {
   const params = new URLSearchParams()
 
   Object.entries(query).forEach(([key, value]) => {
@@ -31,59 +23,119 @@ export async function apiFetch(path, options = {}) {
       value !== null &&
       value !== ''
     ) {
-      params.append(key, String(value))
+      params.append(key, value)
     }
   })
 
   const queryString = params.toString()
 
-  const url = `${BASE_URL}${path}${
-    queryString ? `?${queryString}` : ''
-  }`
+  return queryString ? `?${queryString}` : ''
+}
 
-  const finalHeaders = new Headers(headers)
+async function parseResponse(response) {
+  const contentType =
+    response.headers.get('content-type') || ''
+
+  if (contentType.includes('application/json')) {
+    return response.json()
+  }
+
+  return response.text()
+}
+
+function getErrorMessage(data, fallback) {
+  if (!data) {
+    return fallback
+  }
+
+  if (typeof data === 'string') {
+    return data || fallback
+  }
+
+  if (data.message) {
+    let message = data.message
+
+    if (
+      data.data &&
+      data.data.field &&
+      typeof data.data.field === 'object'
+    ) {
+      const fieldMessages = []
+
+      Object.values(data.data.field).forEach(
+        (messages) => {
+          if (Array.isArray(messages)) {
+            fieldMessages.push(...messages)
+          } else if (messages) {
+            fieldMessages.push(messages)
+          }
+        },
+      )
+
+      if (fieldMessages.length > 0) {
+        message += `: ${fieldMessages.join(', ')}`
+      }
+    }
+
+    return message
+  }
+
+  return fallback
+}
+
+export async function apiFetch(
+  path,
+  options = {},
+) {
+  const {
+    query = {},
+    headers = {},
+    body,
+    ...fetchOptions
+  } = options
 
   const token = getAccessToken()
 
-  if (token) {
-    finalHeaders.set(
-      'Authorization',
-      `Bearer ${token}`,
-    )
+  const requestHeaders = {
+    Accept: 'application/json',
+    ...headers,
   }
+
+  if (token) {
+    requestHeaders.Authorization =
+      `Bearer ${token}`
+  }
+
+  const isFormData =
+    body instanceof FormData
 
   if (
-    body &&
-    !(body instanceof FormData) &&
-    !finalHeaders.has('Content-Type')
+    body !== undefined &&
+    !isFormData &&
+    !requestHeaders['Content-Type']
   ) {
-    finalHeaders.set(
-      'Content-Type',
-      'application/json',
-    )
+    requestHeaders['Content-Type'] =
+      'application/json'
   }
 
+  const url =
+    `${BASE_URL}${path}${buildQuery(query)}`
+
   const response = await fetch(url, {
-    method,
-    headers: finalHeaders,
+    ...fetchOptions,
+    headers: requestHeaders,
     body,
   })
 
-  let data = null
-
-  try {
-    data = await response.json()
-  } catch {
-    data = null
-  }
+  const data = await parseResponse(response)
 
   if (!response.ok) {
-    const message =
-      data?.message ||
-      data?.error ||
-      `Request failed with status ${response.status}`
-
-    const error = new Error(message)
+    const error = new Error(
+      getErrorMessage(
+        data,
+        `Request gagal dengan status ${response.status}`,
+      ),
+    )
 
     error.status = response.status
     error.data = data
@@ -91,28 +143,17 @@ export async function apiFetch(path, options = {}) {
     throw error
   }
 
-  if (data?.status === 'fail') {
-    const validationData = data?.data
-
-    let message = data?.message || 'Request gagal'
-
-    if (validationData) {
-      const details = Object.entries(validationData)
-        .map(([field, messages]) => {
-          const text = Array.isArray(messages)
-            ? messages.join(', ')
-            : String(messages)
-
-          return `${field}: ${text}`
-        })
-        .join('\n')
-
-      if (details) {
-        message += `\n${details}`
-      }
-    }
-
-    const error = new Error(message)
+  if (
+    data &&
+    typeof data === 'object' &&
+    data.status === 'fail'
+  ) {
+    const error = new Error(
+      getErrorMessage(
+        data,
+        'Request gagal',
+      ),
+    )
 
     error.status = response.status
     error.data = data
@@ -126,14 +167,16 @@ export async function apiFetch(path, options = {}) {
 export function toFormData(data = {}) {
   const formData = new FormData()
 
-  Object.entries(data).forEach(([key, value]) => {
-    if (
-      value !== undefined &&
-      value !== null
-    ) {
-      formData.append(key, value)
-    }
-  })
+  Object.entries(data).forEach(
+    ([key, value]) => {
+      if (
+        value !== undefined &&
+        value !== null
+      ) {
+        formData.append(key, value)
+      }
+    },
+  )
 
   return formData
 }

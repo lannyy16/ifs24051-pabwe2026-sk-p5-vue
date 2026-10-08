@@ -1,8 +1,8 @@
 <template>
   <div class="min-h-screen bg-slate-950 px-6 py-10">
-    <div class="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-md flex-col justify-center">
-
-      <!-- Header -->
+    <div
+      class="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-md flex-col justify-center"
+    >
       <div class="mb-8 text-center">
         <div
           class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600 text-2xl font-bold text-white shadow-lg shadow-indigo-900/40"
@@ -19,7 +19,6 @@
         </p>
       </div>
 
-      <!-- Register Card -->
       <div
         class="rounded-3xl bg-white p-8 shadow-2xl shadow-black/30 sm:p-9"
       >
@@ -33,7 +32,6 @@
           </p>
         </div>
 
-        <!-- Error -->
         <div
           v-if="authStore.error"
           class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
@@ -45,7 +43,6 @@
           class="space-y-5"
           @submit.prevent="handleSubmit"
         >
-          <!-- Name -->
           <div>
             <label
               for="name"
@@ -65,7 +62,6 @@
             />
           </div>
 
-          <!-- Email -->
           <div>
             <label
               for="email"
@@ -85,7 +81,6 @@
             />
           </div>
 
-          <!-- Password -->
           <div>
             <label
               for="password"
@@ -115,7 +110,6 @@
             </div>
           </div>
 
-          <!-- Submit -->
           <button
             type="submit"
             :disabled="authStore.loading"
@@ -132,10 +126,12 @@
           </button>
         </form>
 
-        <!-- Login -->
-        <div class="mt-7 border-t border-slate-100 pt-6 text-center">
+        <div
+          class="mt-7 border-t border-slate-100 pt-6 text-center"
+        >
           <p class="text-sm text-slate-500">
             Sudah punya akun?
+
             <RouterLink
               to="/auth/login"
               class="font-semibold text-indigo-600 transition hover:text-indigo-700 hover:underline"
