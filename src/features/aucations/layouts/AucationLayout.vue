@@ -13,7 +13,7 @@ const sidebarOpen = ref(false)
 
 onMounted(async () => {
   const response = await usersStore.fetchProfile()
-
+  // Token kedaluwarsa / tidak valid -> kembali ke halaman login
   if (response.httpStatus === 401) {
     authStore.clearSession()
     router.replace('/auth/login')
@@ -23,20 +23,10 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-screen">
-    <SidebarComponent
-      :open="sidebarOpen"
-      @close="sidebarOpen = false"
-    />
-
+    <SidebarComponent :open="sidebarOpen" @close="sidebarOpen = false" />
     <div class="lg:pl-64">
-      <NavbarComponent
-        @toggle-sidebar="sidebarOpen = !sidebarOpen"
-      />
-
-      <main
-        id="main-content"
-        class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8"
-      >
+      <NavbarComponent @toggle-sidebar="sidebarOpen = !sidebarOpen" />
+      <main class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8">
         <RouterView />
       </main>
     </div>
