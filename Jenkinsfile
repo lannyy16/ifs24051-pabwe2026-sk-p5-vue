@@ -45,6 +45,10 @@ pipeline {
                     echo "       INSTALLING DEPENDENCIES"
                     echo "======================================"
 
+                    bun --version
+
+                    echo "=== Installing Dependencies ==="
+
                     bun install
 
                     echo "=== Dependencies Installed ==="
@@ -58,7 +62,7 @@ pipeline {
         stage('Test') {
             agent {
                 docker {
-                    image 'oven/bun:alpine'
+                    image 'node:24-alpine'
                     reuseNode true
                 }
             }
@@ -71,7 +75,24 @@ pipeline {
                     echo "       RUNNING TESTS"
                     echo "======================================"
 
-                    bun run test:coverage
+                    echo "=== Node Version ==="
+                    node --version
+
+                    echo "=== NPM Version ==="
+                    npm --version
+
+                    echo "=== Checking node_modules ==="
+                    test -d node_modules
+                    echo "node_modules tersedia"
+
+                    echo "=== Vitest Version ==="
+                    ./node_modules/.bin/vitest --version
+
+                    echo "=== Running Vitest with Coverage ==="
+
+                    ./node_modules/.bin/vitest run \
+                        --coverage \
+                        --pool=threads
 
                     echo "=== Tests Passed ==="
                 '''
@@ -99,7 +120,7 @@ pipeline {
                 sh '''
                     set -e
 
-                    mkdir -p .trivy-cache
+                    mkdir -p .trivy-cache || true
 
                     echo "======================================"
                     echo "        TRIVY SECURITY SCAN"
@@ -108,7 +129,7 @@ pipeline {
                     echo "=== Trivy Version ==="
                     trivy --version
 
-                    echo "=== Scanning Filesystem ==="
+                    echo "=== Trivy Scan ==="
 
                     trivy fs \
                         --cache-dir .trivy-cache \
@@ -155,7 +176,6 @@ pipeline {
 
             steps {
                 withSonarQubeEnv('SonarQube') {
-
                     sh '''
                         set -e
 
@@ -175,17 +195,9 @@ pipeline {
         // QUALITY GATE
         // ============================================================
         stage('Quality Gate') {
-
             steps {
-
-                timeout(
-                    time: 30,
-                    unit: 'MINUTES'
-                ) {
-
-                    waitForQualityGate(
-                        abortPipeline: true
-                    )
+                timeout(time: 30, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -203,7 +215,6 @@ pipeline {
             }
 
             steps {
-
                 sh '''
                     set -e
 
@@ -243,9 +254,9 @@ pipeline {
 
             steps {
 
-                echo "======================================"
-                echo "       PUBLISHING APPLICATION"
-                echo "======================================"
+                // ====================================================
+                // 1. ARCHIVE ARTIFACT KE JENKINS
+                // ====================================================
 
                 archiveArtifacts(
                     artifacts: 'latest-app.zip',
@@ -255,58 +266,53 @@ pipeline {
 
                 script {
 
-                    def appName = env.JOB_NAME
-                        .replaceAll(
-                            '[^a-zA-Z0-9._-]',
-                            '-'
-                        )
-                        .replaceAll(
-                            '-+',
-                            '-'
-                        )
-                        .replaceAll(
-                            '^-|-$',
-                            ''
-                        )
+                    // ====================================================
+                    // 2. BUAT IDENTITAS APPLICATION
+                    // ====================================================
 
-                    def buildId =
-                        env.BUILD_NUMBER
+                    def appName = env.JOB_NAME
+                        .replaceAll('[^a-zA-Z0-9._-]', '-')
+                        .replaceAll('-+', '-')
+                        .replaceAll('^-|-$', '')
+
+                    def buildId = env.BUILD_NUMBER
 
                     echo "Application Name: ${appName}"
                     echo "Build ID: ${buildId}"
 
+                    // ====================================================
+                    // 3. COPY KE USER CONTENT
+                    // ====================================================
+
                     sh """
                         set -e
 
-                        echo "=== Creating Published Directory ==="
+                        echo "======================================"
+                        echo "       PUBLISHING USER CONTENT"
+                        echo "======================================"
 
                         docker exec cicd-jenkins \
                             mkdir -p \
                             "/var/jenkins_home/userContent/applications/${appName}/${buildId}"
 
-                        echo "=== Copying Artifact ==="
-
                         docker cp \
                             latest-app.zip \
                             "cicd-jenkins:/var/jenkins_home/userContent/applications/${appName}/${buildId}/latest-app.zip"
 
-                        echo "=== Published Artifact ==="
+                        echo "=== Published File ==="
 
                         docker exec cicd-jenkins \
                             ls -lh \
                             "/var/jenkins_home/userContent/applications/${appName}/${buildId}/latest-app.zip"
                     """
 
-                    def jenkinsBaseUrl =
-                        env.BUILD_URL
-                            .substring(
-                                0,
-                                env.BUILD_URL.indexOf('/job/')
-                            )
-                            .replace(
-                                'localhost',
-                                'host.docker.internal'
-                            )
+                    // ====================================================
+                    // 4. BUAT PUBLIC ARTIFACT URL
+                    // ====================================================
+
+                    def jenkinsBaseUrl = env.BUILD_URL
+                        .substring(0, env.BUILD_URL.indexOf('/job/'))
+                        .replace('localhost', 'host.docker.internal')
 
                     env.ARTIFACT_URL =
                         "${jenkinsBaseUrl}/userContent/applications/${appName}/${buildId}/latest-app.zip"
@@ -325,7 +331,6 @@ pipeline {
         // DEPLOY APPLICATION
         // ============================================================
         stage('Deploy Application') {
-
             agent {
                 docker {
                     image 'curlimages/curl:8.15.0'
@@ -335,7 +340,6 @@ pipeline {
             }
 
             steps {
-
                 script {
 
                     echo "=========================================="
@@ -346,35 +350,34 @@ pipeline {
                     echo "${env.ARTIFACT_URL}"
 
                     // ==================================================
-                    // REQUEST REDEPLOYMENT
+                    // 1. REQUEST REDEPLOYMENT
                     // ==================================================
 
                     echo ""
                     echo "=== Request Redeployment ==="
 
-                    def redeployResponse =
-                        sh(
-                            script: '''
-                                set -e
+                    def redeployResponse = sh(
+                        script: '''
+                            set -e
 
-                                curl -sS --fail-with-body \
-                                    -X POST "$URL_REDEPLOY" \
-                                    -H "Content-Type: application/json" \
-                                    -d "{
-                                        \\"token_access\\": \\"$DEPLOY_TOKEN\\",
-                                        \\"website_id\\": \\"$WEBSITE_ID\\",
-                                        \\"source_url\\": \\"$ARTIFACT_URL\\",
-                                        \\"source_type\\": \\"jenkins\\"
-                                    }"
-                            ''',
-                            returnStdout: true
-                        ).trim()
+                            curl -sS --fail-with-body \
+                                -X POST "$URL_REDEPLOY" \
+                                -H "Content-Type: application/json" \
+                                -d "{
+                                    \\"token_access\\": \\"$DEPLOY_TOKEN\\",
+                                    \\"website_id\\": \\"$WEBSITE_ID\\",
+                                    \\"source_url\\": \\"$ARTIFACT_URL\\",
+                                    \\"source_type\\": \\"jenkins\\"
+                                }"
+                        ''',
+                        returnStdout: true
+                    ).trim()
 
                     echo "Redeploy Response:"
                     echo redeployResponse
 
                     // ==================================================
-                    // POLLING DEPLOYMENT
+                    // 2. POLLING DEPLOYMENT PROGRESS
                     // ==================================================
 
                     echo ""
@@ -382,69 +385,54 @@ pipeline {
 
                     def maxAttempts = 120
                     def attempt = 0
-                    def deploymentStatus =
-                        'IN_PROGRESS'
+                    def deploymentStatus = 'IN_PROGRESS'
 
-                    while (
-                        deploymentStatus ==
-                        'IN_PROGRESS'
-                    ) {
+                    while (deploymentStatus == 'IN_PROGRESS') {
 
                         attempt++
 
-                        if (
-                            attempt >
-                            maxAttempts
-                        ) {
-
+                        if (attempt > maxAttempts) {
                             error(
                                 "Deployment timeout. " +
-                                "Status masih " +
-                                "IN_PROGRESS setelah " +
+                                "Status masih IN_PROGRESS setelah " +
                                 "${maxAttempts} attempts."
                             )
                         }
 
-                        sleep(
-                            time: 5,
-                            unit: 'SECONDS'
-                        )
+                        sleep time: 5, unit: 'SECONDS'
 
                         echo ""
                         echo "=== Checking Deployment Progress (${attempt}/${maxAttempts}) ==="
 
-                        def progressResponse =
-                            sh(
-                                script: '''
-                                    set -e
+                        def progressResponse = sh(
+                            script: '''
+                                set -e
 
-                                    curl -sS --fail-with-body \
-                                        -X POST "$URL_PROGRESS" \
-                                        -H "Content-Type: application/json" \
-                                        -d "{
-                                            \\"token_access\\": \\"$DEPLOY_TOKEN\\",
-                                            \\"website_id\\": \\"$WEBSITE_ID\\"
-                                        }"
-                                ''',
-                                returnStdout: true
-                            ).trim()
+                                curl -sS --fail-with-body \
+                                    -X POST "$URL_PROGRESS" \
+                                    -H "Content-Type: application/json" \
+                                    -d "{
+                                        \\"token_access\\": \\"$DEPLOY_TOKEN\\",
+                                        \\"website_id\\": \\"$WEBSITE_ID\\"
+                                    }"
+                            ''',
+                            returnStdout: true
+                        ).trim()
 
                         echo "Progress Response:"
                         echo progressResponse
 
-                        def json =
-                            readJSON text:
-                            progressResponse
+                        // ==================================================
+                        // PARSE JSON
+                        // ==================================================
 
-                        deploymentStatus =
-                            json?.data?.status
-                                ?.toString()
-                                ?.toUpperCase()
+                        def json = readJSON text: progressResponse
 
-                        if (
-                            !deploymentStatus
-                        ) {
+                        deploymentStatus = json?.data?.status
+                            ?.toString()
+                            ?.toUpperCase()
 
+                        if (!deploymentStatus) {
                             error(
                                 "Response progress tidak memiliki data.status"
                             )
@@ -456,10 +444,7 @@ pipeline {
                         // SUCCESS
                         // ==================================================
 
-                        if (
-                            deploymentStatus ==
-                            'SUCCESS'
-                        ) {
+                        if (deploymentStatus == 'SUCCESS') {
 
                             echo ""
                             echo "=========================================="
@@ -473,10 +458,7 @@ pipeline {
                         // FAIL
                         // ==================================================
 
-                        if (
-                            deploymentStatus ==
-                            'FAIL'
-                        ) {
+                        if (deploymentStatus == 'FAIL') {
 
                             echo ""
                             echo "=========================================="
@@ -498,6 +480,10 @@ pipeline {
                             )
                         }
 
+                        // ==================================================
+                        // OTHER STATUS
+                        // ==================================================
+
                         echo "Deployment masih berjalan..."
                     }
 
@@ -516,46 +502,33 @@ pipeline {
     post {
 
         always {
-
             archiveArtifacts(
-                artifacts:
-                    'trivy-results.sarif',
-                allowEmptyArchive:
-                    true
+                artifacts: 'trivy-results.sarif',
+                allowEmptyArchive: true
             )
         }
 
         success {
-
             echo "=========================================="
             echo "       ✅ PIPELINE SUCCESS"
             echo "=========================================="
-
             echo "Result: ${currentBuild.currentResult}"
-
-            echo "📦 Artifact: " +
-                "${env.ARTIFACT_URL ?: '(not published)'}"
-
+            echo "📦 Artifact: ${env.ARTIFACT_URL ?: '(not published)'}"
             echo "🚀 Website berhasil dideploy."
         }
 
         failure {
-
             echo "=========================================="
             echo "       ❌ PIPELINE FAILED"
             echo "=========================================="
-
             echo "Result: ${currentBuild.currentResult}"
-
             echo "Periksa log stage yang merah / Console Output untuk penyebab gagal."
         }
 
         unstable {
-
             echo "=========================================="
             echo "       ⚠️ PIPELINE UNSTABLE"
             echo "=========================================="
-
             echo "Result: ${currentBuild.currentResult}"
         }
     }
