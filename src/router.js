@@ -58,23 +58,18 @@ export const routes = [
 
 /**
  * Menjaga akses halaman berdasarkan status autentikasi.
- *
- * Vue Router memang menggunakan nilai true untuk mengizinkan
- * navigasi dan string untuk mengarahkan ke halaman lain.
  */
-// NOSONAR - Perbedaan tipe return diperlukan oleh kontrak navigation guard Vue Router.
 export function authGuard(to) {
   const hasToken = Boolean(getAccessToken())
 
-  if (to.meta.requiresAuth && !hasToken) {
-    return '/auth/login'
-  }
+  const needsLogin = to.meta.requiresAuth && !hasToken
+  const needsRedirectHome = to.meta.guestOnly && hasToken
 
-  if (to.meta.guestOnly && hasToken) {
-    return '/'
-  }
-
-  return true
+  return needsLogin
+    ? '/auth/login'
+    : needsRedirectHome
+      ? '/'
+      : true
 }
 
 export function createAppRouter(history) {
