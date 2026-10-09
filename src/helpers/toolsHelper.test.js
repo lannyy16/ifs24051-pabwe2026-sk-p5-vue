@@ -84,9 +84,17 @@ describe('format', () => {
   })
 
   it('isValidEmail', () => {
-    expect(isValidEmail('a@b.co')).toBe(true)
-    expect(isValidEmail('a@b')).toBe(false)
-  })
+  expect(isValidEmail('a@b.co')).toBe(true)
+  expect(isValidEmail(' a@b.co ')).toBe(true)
+
+  expect(isValidEmail('a@b')).toBe(false)
+  expect(isValidEmail('')).toBe(false)
+  expect(isValidEmail('@b.co')).toBe(false)
+  expect(isValidEmail('a@@b.co')).toBe(false)
+  expect(isValidEmail('a @b.co')).toBe(false)
+  expect(isValidEmail('a@.co')).toBe(false)
+  expect(isValidEmail('a@b.')).toBe(false)
+})
 
   it('extractErrorMessage', () => {
     expect(extractErrorMessage({ message: 'Data tidak valid', data: { email: ['Wajib', 'Salah'], x: 1 } })).toBe(

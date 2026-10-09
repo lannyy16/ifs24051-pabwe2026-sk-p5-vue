@@ -118,8 +118,23 @@ export function toInputDatetime(value) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-export const isValidEmail = (value) =>
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim())
+export const isValidEmail = (value) => {
+  const email = String(value).trim()
+  const atIndex = email.indexOf('@')
+
+  if (atIndex <= 0 || atIndex !== email.lastIndexOf('@')) {
+    return false
+  }
+
+  if (/\s/.test(email)) {
+    return false
+  }
+
+  const domain = email.slice(atIndex + 1)
+  const dotIndex = domain.lastIndexOf('.')
+
+  return dotIndex > 0 && dotIndex < domain.length - 1
+}
 
 /** Menggabungkan pesan utama dan detail validasi dari respons gagal. */
 export function extractErrorMessage(response) {
