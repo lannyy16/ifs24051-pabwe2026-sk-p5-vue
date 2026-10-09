@@ -1,3 +1,4 @@
+
 import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
@@ -27,9 +28,20 @@ export default defineConfig(({ mode }) => {
       coverage: {
         provider: 'v8',
         include: ['src/**/*.{js,vue}'],
-        exclude: ['src/main.js', 'src/setupTests.js', 'src/test-utils.js', 'src/**/*.test.js'],
-        reporter: ['text', 'html'],
-        thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },
+        exclude: [
+          'src/main.js',
+          'src/setupTests.js',
+          'src/test-utils.js',
+          'src/**/*.test.js',
+        ],
+        reporter: ['text', 'html', 'lcov'],
+        reportsDirectory: './coverage',
+        thresholds: {
+          lines: 100,
+          functions: 100,
+          branches: 100,
+          statements: 100,
+        },
       },
     },
   }
