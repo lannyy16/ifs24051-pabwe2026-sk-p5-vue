@@ -1,3 +1,4 @@
+
 import { createRouter, createWebHistory } from 'vue-router'
 import NotFoundPage from './features/common/pages/NotFoundPage.vue'
 import { getAccessToken } from './helpers/apiHelper'
@@ -57,19 +58,33 @@ export const routes = [
 ]
 
 /**
- * Menjaga akses halaman berdasarkan status autentikasi.
+ * Menentukan keputusan autentikasi.
+ * Fungsi selalu mengembalikan objek dengan struktur yang sama.
  */
 export function authGuard(to) {
   const hasToken = Boolean(getAccessToken())
 
-  const needsLogin = to.meta.requiresAuth && !hasToken
-  const needsRedirectHome = to.meta.guestOnly && hasToken
+  if (to.meta.requiresAuth && !hasToken) {
+    return { redirectTo: '/auth/login' }
+  }
 
-  return needsLogin
-    ? '/auth/login'
-    : needsRedirectHome
-      ? '/'
-      : true
+  if (to.meta.guestOnly && hasToken) {
+    return { redirectTo: '/' }
+  }
+
+  return { redirectTo: null }
+}
+
+/**
+ * Mengubah keputusan autentikasi menjadi hasil navigation guard.
+ * Fungsi selalu mengembalikan Promise.
+ */
+function navigationGuard(to) {
+  const { redirectTo } = authGuard(to)
+
+  return Promise.resolve(redirectTo).then(
+    (target) => target ?? true,
+  )
 }
 
 export function createAppRouter(history) {
@@ -78,7 +93,7 @@ export function createAppRouter(history) {
     routes,
   })
 
-  router.beforeEach(authGuard)
+  router.beforeEach(navigationGuard)
 
   return router
 }

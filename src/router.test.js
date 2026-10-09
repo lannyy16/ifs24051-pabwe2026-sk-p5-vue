@@ -1,63 +1,180 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+
+import {
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 import { createMemoryHistory } from 'vue-router'
-import router, { authGuard, createAppRouter, routes } from './router'
-import NotFoundPage from './features/common/pages/NotFoundPage.vue'
-import { putAccessToken } from './helpers/apiHelper'
 
-const go = async (path, token = false) => {
-  if (token) putAccessToken('TOK')
-  const appRouter = createAppRouter(createMemoryHistory())
-  await appRouter.push(path)
-  await appRouter.isReady()
-  return appRouter.currentRoute.value
-}
+const { mockGetAccessToken } = vi.hoisted(() => ({
+  mockGetAccessToken: vi.fn(),
+}))
 
-describe('authGuard', () => {
-  it('menolak halaman terproteksi tanpa token', () => {
-    expect(authGuard({ meta: { requiresAuth: true } })).toBe('/auth/login')
-  })
-  it('mengizinkan halaman terproteksi dengan token', () => {
-    putAccessToken('TOK')
-    expect(authGuard({ meta: { requiresAuth: true } })).toBe(true)
-  })
-  it('mengalihkan tamu-saja ke dashboard jika sudah login', () => {
-    putAccessToken('TOK')
-    expect(authGuard({ meta: { guestOnly: true } })).toBe('/')
-  })
-  it('mengizinkan halaman tamu-saja tanpa token dan halaman publik', () => {
-    expect(authGuard({ meta: { guestOnly: true } })).toBe(true)
-    expect(authGuard({ meta: {} })).toBe(true)
-  })
-})
+vi.mock('./helpers/apiHelper', () => ({
+  getAccessToken: mockGetAccessToken,
+}))
 
-describe('router', () => {
-  beforeEach(() => localStorage.clear())
+import {
+  authGuard,
+  createAppRouter,
+  routes,
+} from './router'
 
-  it('mendeklarasikan rute auth, lelang, dan wildcard', () => {
-    expect(routes.map((r) => r.path)).toEqual(['/auth', '/', '/:pathMatch(.*)*'])
-    expect(routes[0].children.map((r) => r.path)).toEqual(['login', 'register'])
-    expect(routes[1].children.map((r) => r.path)).toEqual(['', 'aucations/:aucationId', 'users', 'profile'])
-    expect(router.getRoutes().length).toBeGreaterThan(5)
+describe('Router', () => {
+  beforeEach(() => {
+    mockGetAccessToken.mockReset()
+    mockGetAccessToken.mockReturnValue(null)
   })
 
-  it('tanpa token, / diarahkan ke login', async () => {
-    expect((await go('/')).path).toBe('/auth/login')
-    expect((await go('/users')).path).toBe('/auth/login')
+  it('mendefinisikan semua rute aplikasi', () => {
+    const authRoute = routes.find(
+      (route) => route.path === '/auth',
+    )
+
+    const auctionRoute = routes.find(
+      (route) => route.path === '/',
+    )
+
+    const notFoundRoute = routes.find(
+      (route) => route.path === '/:pathMatch(.*)*',
+    )
+
+    expect(authRoute).toBeDefined()
+    expect(authRoute.redirect).toBe('/auth/login')
+    expect(authRoute.children.map((route) => route.path)).toEqual([
+      'login',
+      'register',
+    ])
+
+    expect(auctionRoute).toBeDefined()
+    expect(auctionRoute.children.map((route) => route.path)).toEqual([
+      '',
+      'aucations/:aucationId',
+      'users',
+      'profile',
+    ])
+
+    expect(notFoundRoute).toBeDefined()
   })
 
-  it('/auth diarahkan ke login dan register dapat diakses tamu', async () => {
-    expect((await go('/auth')).path).toBe('/auth/login')
-    expect((await go('/auth/register')).path).toBe('/auth/register')
+  it('mengarahkan pengguna tanpa token ke halaman login', () => {
+    mockGetAccessToken.mockReturnValue(null)
+
+    const result = authGuard({
+      meta: { requiresAuth: true },
+    })
+
+    expect(result).toEqual({
+      redirectTo: '/auth/login',
+    })
   })
 
-  it('dengan token, halaman lelang dapat diakses dan halaman auth ditolak', async () => {
-    expect((await go('/aucations/3', true)).params.aucationId).toBe('3')
-    expect((await go('/profile', true)).path).toBe('/profile')
-    expect((await go('/auth/login', true)).path).toBe('/')
+  it('mengarahkan pengguna yang sudah login dari halaman tamu ke home', () => {
+    mockGetAccessToken.mockReturnValue('access-token')
+
+    const result = authGuard({
+      meta: { guestOnly: true },
+    })
+
+    expect(result).toEqual({
+      redirectTo: '/',
+    })
   })
 
-  it('rute tidak dikenal memakai NotFoundPage', async () => {
-    const route = await go('/halaman/tidak/ada')
-    expect(route.matched[0].components.default).toBe(NotFoundPage)
+  it('mengizinkan halaman tamu ketika pengguna belum login', () => {
+    mockGetAccessToken.mockReturnValue(null)
+
+    const result = authGuard({
+      meta: { guestOnly: true },
+    })
+
+    expect(result).toEqual({
+      redirectTo: null,
+    })
+  })
+
+  it('mengizinkan halaman privat ketika pengguna sudah login', () => {
+    mockGetAccessToken.mockReturnValue('access-token')
+
+    const result = authGuard({
+      meta: { requiresAuth: true },
+    })
+
+    expect(result).toEqual({
+      redirectTo: null,
+    })
+  })
+
+  it('membuat router dengan seluruh rute aplikasi', () => {
+    const router = createAppRouter(createMemoryHistory())
+
+    expect(router).toBeDefined()
+
+    const registeredPaths = router
+      .getRoutes()
+      .map((route) => route.path)
+
+    expect(registeredPaths).toContain('/auth/login')
+    expect(registeredPaths).toContain('/auth/register')
+    expect(registeredPaths).toContain('/')
+    expect(registeredPaths).toContain('/aucations/:aucationId')
+    expect(registeredPaths).toContain('/users')
+    expect(registeredPaths).toContain('/profile')
+    expect(registeredPaths).toContain('/:pathMatch(.*)*')
+  })
+
+  it('mengalihkan pengguna tanpa token ke login saat membuka home', async () => {
+    mockGetAccessToken.mockReturnValue(null)
+
+    const router = createAppRouter(createMemoryHistory())
+
+    await router.push('/')
+
+    expect(router.currentRoute.value.fullPath).toBe('/auth/login')
+  })
+
+  it('mengalihkan pengguna yang sudah login dari login ke home', async () => {
+    mockGetAccessToken.mockReturnValue('access-token')
+
+    const router = createAppRouter(createMemoryHistory())
+
+    await router.push('/auth/login')
+
+    expect(router.currentRoute.value.fullPath).toBe('/')
+  })
+
+  it('memuat halaman autentikasi, halaman privat, dan halaman 404', async () => {
+    const router = createAppRouter(createMemoryHistory())
+
+    mockGetAccessToken.mockReturnValue(null)
+
+    await router.push('/auth/login')
+    expect(router.currentRoute.value.fullPath).toBe('/auth/login')
+
+    await router.push('/auth/register')
+    expect(router.currentRoute.value.fullPath).toBe('/auth/register')
+
+    mockGetAccessToken.mockReturnValue('access-token')
+
+    const privatePaths = [
+      '/',
+      '/aucations/123',
+      '/users',
+      '/profile',
+    ]
+
+    for (const path of privatePaths) {
+      await router.push(path)
+
+      expect(router.currentRoute.value.fullPath).toBe(path)
+    }
+
+    await router.push('/halaman-tidak-tersedia')
+
+    expect(router.currentRoute.value.matched.at(-1)?.path).toBe(
+      '/:pathMatch(.*)*',
+    )
   })
 })
