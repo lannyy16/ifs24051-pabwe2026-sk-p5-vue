@@ -9,8 +9,14 @@ export const routes = [
     meta: { guestOnly: true },
     redirect: '/auth/login',
     children: [
-      { path: 'login', component: () => import('./features/auth/pages/LoginPage.vue') },
-      { path: 'register', component: () => import('./features/auth/pages/RegisterPage.vue') },
+      {
+        path: 'login',
+        component: () => import('./features/auth/pages/LoginPage.vue'),
+      },
+      {
+        path: 'register',
+        component: () => import('./features/auth/pages/RegisterPage.vue'),
+      },
     ],
   },
   {
@@ -18,26 +24,56 @@ export const routes = [
     component: () => import('./features/aucations/layouts/AucationLayout.vue'),
     meta: { requiresAuth: true },
     children: [
-      { path: '', component: () => import('./features/aucations/pages/HomePage.vue') },
-      { path: 'aucations/:aucationId', component: () => import('./features/aucations/pages/DetailPage.vue') },
-      { path: 'users', component: () => import('./features/users/pages/UsersPage.vue') },
-      { path: 'profile', component: () => import('./features/users/pages/ProfilePage.vue') },
+      {
+        path: '',
+        component: () => import('./features/aucations/pages/HomePage.vue'),
+      },
+      {
+        path: 'aucations/:aucationId',
+        component: () => import('./features/aucations/pages/DetailPage.vue'),
+      },
+      {
+        path: 'users',
+        component: () => import('./features/users/pages/UsersPage.vue'),
+      },
+      {
+        path: 'profile',
+        component: () => import('./features/users/pages/ProfilePage.vue'),
+      },
     ],
   },
-  { path: '/:pathMatch(.*)*', component: NotFoundPage },
+  {
+    path: '/:pathMatch(.*)*',
+    component: NotFoundPage,
+  },
 ]
 
-/** Halaman terproteksi butuh token; halaman auth hanya untuk tamu. */
+/**
+ * Halaman terproteksi membutuhkan token.
+ * Halaman autentikasi hanya dapat diakses oleh tamu.
+ */
 export function authGuard(to) {
   const hasToken = Boolean(getAccessToken())
-  if (to.meta.requiresAuth && !hasToken) return '/auth/login'
-  if (to.meta.guestOnly && hasToken) return '/'
+
+  if (to.meta.requiresAuth && !hasToken) {
+    return '/auth/login'
+  }
+
+  if (to.meta.guestOnly && hasToken) {
+    return '/'
+  }
+
   return true
 }
 
 export function createAppRouter(history) {
-  const router = createRouter({ history, routes })
+  const router = createRouter({
+    history,
+    routes,
+  })
+
   router.beforeEach(authGuard)
+
   return router
 }
 

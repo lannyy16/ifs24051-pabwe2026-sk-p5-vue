@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/vue'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/vue'
 import { createPinia } from 'pinia'
 import { createMemoryHistory } from 'vue-router'
 
@@ -134,6 +139,7 @@ describe('App (integrasi)', () => {
       })
 
       expect(getAccessToken()).toBeNull()
+
       expect(
         localStorage.getItem('access_token'),
       ).toBeNull()

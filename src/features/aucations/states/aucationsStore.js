@@ -4,6 +4,20 @@ import * as aucationApi from '../api/aucationApi'
 import { isSuccess } from '../../../helpers/apiHelper'
 import { getHighestBid } from '../../../helpers/toolsHelper'
 
+function track(loading, done, call) {
+  return async (...args) => {
+    loading.value = true
+    done.value = false
+
+    const response = await call(...args)
+
+    loading.value = false
+    done.value = isSuccess(response)
+
+    return response
+  }
+}
+
 export const useAucationsStore = defineStore('aucations', () => {
   const aucations = ref([])
   const aucation = ref(null)
@@ -24,51 +38,96 @@ export const useAucationsStore = defineStore('aucations', () => {
   const isAucationDeleteAll = ref(false)
   const isAucationDeletedAll = ref(false)
 
-  // API daftar hanya mengirim id tawaran (bids: [2]); tawaran tertinggi diambil dari detail lelang.
+  // Daftar lelang hanya mengirim ID bid, jadi ambil detail untuk nilai tertinggi.
   async function loadHighestBids() {
-    const targets = aucations.value.filter((item) => (item.bids ?? []).some((bid) => typeof bid !== 'object'))
-    const details = await Promise.all(targets.map((item) => aucationApi.getAucation(item.id)))
+    const targets = aucations.value.filter((item) =>
+      (item.bids ?? []).some((bid) => typeof bid !== 'object'),
+    )
+
+    const details = await Promise.all(
+      targets.map((item) => aucationApi.getAucation(item.id)),
+    )
+
     details.forEach((response, index) => {
-      if (isSuccess(response)) targets[index].highest_bid = getHighestBid(response.data.aucation)
+      if (isSuccess(response)) {
+        targets[index].highest_bid = getHighestBid(
+          response.data.aucation,
+        )
+      }
     })
   }
 
   async function fetchAucations(params) {
     isAucation.value = true
+
     const response = await aucationApi.getAucations(params)
-    aucations.value = isSuccess(response) ? response.data.aucations : []
+
+    aucations.value = isSuccess(response)
+      ? response.data.aucations
+      : []
+
     isAucation.value = false
+
     await loadHighestBids()
+
     return response
   }
 
   async function fetchAucation(id) {
     isAucation.value = true
+
     const response = await aucationApi.getAucation(id)
-    aucation.value = isSuccess(response) ? response.data.aucation : null
+
+    aucation.value = isSuccess(response)
+      ? response.data.aucation
+      : null
+
     isAucation.value = false
+
     return response
   }
 
-  // Membungkus aksi mutasi: menyalakan flag "sedang berjalan" lalu flag "berhasil".
-  function track(loading, done, call) {
-    return async (...args) => {
-      loading.value = true
-      done.value = false
-      const response = await call(...args)
-      loading.value = false
-      done.value = isSuccess(response)
-      return response
-    }
-  }
+  const addAucation = track(
+    isAucationAdd,
+    isAucationAdded,
+    (payload) => aucationApi.addAucation(payload),
+  )
 
-  const addAucation = track(isAucationAdd, isAucationAdded, (p) => aucationApi.addAucation(p))
-  const changeAucation = track(isAucationChange, isAucationChanged, (id, p) => aucationApi.changeAucation(id, p))
-  const changeCover = track(isAucationChangeCover, isAucationChangedCover, (id, f) => aucationApi.changeCover(id, f))
-  const deleteAucation = track(isAucationDelete, isAucationDeleted, (id) => aucationApi.deleteAucation(id))
-  const addBid = track(isBidAdd, isBidAdded, (id, bid) => aucationApi.addBid(id, bid))
-  const deleteBid = track(isBidDelete, isBidDeleted, (id) => aucationApi.deleteBid(id))
-  const deleteAllAucations = track(isAucationDeleteAll, isAucationDeletedAll, () => aucationApi.deleteAllAucations())
+  const changeAucation = track(
+    isAucationChange,
+    isAucationChanged,
+    (id, payload) => aucationApi.changeAucation(id, payload),
+  )
+
+  const changeCover = track(
+    isAucationChangeCover,
+    isAucationChangedCover,
+    (id, file) => aucationApi.changeCover(id, file),
+  )
+
+  const deleteAucation = track(
+    isAucationDelete,
+    isAucationDeleted,
+    (id) => aucationApi.deleteAucation(id),
+  )
+
+  const addBid = track(
+    isBidAdd,
+    isBidAdded,
+    (id, bid) => aucationApi.addBid(id, bid),
+  )
+
+  const deleteBid = track(
+    isBidDelete,
+    isBidDeleted,
+    (id) => aucationApi.deleteBid(id),
+  )
+
+  const deleteAllAucations = track(
+    isAucationDeleteAll,
+    isAucationDeletedAll,
+    () => aucationApi.deleteAllAucations(),
+  )
 
   return {
     aucations,

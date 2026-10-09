@@ -3,6 +3,20 @@ import { ref } from 'vue'
 import * as userApi from '../api/userApi'
 import { isSuccess } from '../../../helpers/apiHelper'
 
+function track(loading, done, call) {
+  return async (...args) => {
+    loading.value = true
+    done.value = false
+
+    const response = await call(...args)
+
+    loading.value = false
+    done.value = isSuccess(response)
+
+    return response
+  }
+}
+
 export const useUsersStore = defineStore('users', () => {
   const users = ref([])
   const user = ref(null)
@@ -17,42 +31,63 @@ export const useUsersStore = defineStore('users', () => {
 
   async function fetchUsers() {
     isLoading.value = true
+
     const response = await userApi.getUsers()
-    users.value = isSuccess(response) ? response.data.users : []
+
+    users.value = isSuccess(response)
+      ? response.data.users
+      : []
+
     isLoading.value = false
+
     return response
   }
 
   async function fetchUser(id) {
     isLoading.value = true
+
     const response = await userApi.getUserById(id)
-    user.value = isSuccess(response) ? response.data.user : null
+
+    user.value = isSuccess(response)
+      ? response.data.user
+      : null
+
     isLoading.value = false
+
     return response
   }
 
   async function fetchProfile() {
     isLoading.value = true
+
     const response = await userApi.getProfile()
-    profile.value = isSuccess(response) ? response.data.user : null
+
+    profile.value = isSuccess(response)
+      ? response.data.user
+      : null
+
     isLoading.value = false
+
     return response
   }
 
-  function track(loading, done, call) {
-    return async (...args) => {
-      loading.value = true
-      done.value = false
-      const response = await call(...args)
-      loading.value = false
-      done.value = isSuccess(response)
-      return response
-    }
-  }
+  const updateProfile = track(
+    isProfileChange,
+    isProfileChanged,
+    (payload) => userApi.updateProfile(payload),
+  )
 
-  const updateProfile = track(isProfileChange, isProfileChanged, (payload) => userApi.updateProfile(payload))
-  const uploadPhoto = track(isPhotoChange, isPhotoChanged, (file) => userApi.uploadPhoto(file))
-  const changePassword = track(isPasswordChange, isPasswordChanged, (payload) => userApi.changePassword(payload))
+  const uploadPhoto = track(
+    isPhotoChange,
+    isPhotoChanged,
+    (file) => userApi.uploadPhoto(file),
+  )
+
+  const changePassword = track(
+    isPasswordChange,
+    isPasswordChanged,
+    (payload) => userApi.changePassword(payload),
+  )
 
   return {
     users,
