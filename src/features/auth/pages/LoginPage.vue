@@ -1,61 +1,141 @@
+```vue
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useInput } from '../../../hooks/useInput'
 import { useAuthStore } from '../states/authStore'
 import { isSuccess } from '../../../helpers/apiHelper'
-import { extractErrorMessage, isValidEmail, showErrorDialog } from '../../../helpers/toolsHelper'
+import {
+  extractErrorMessage,
+  isValidEmail,
+  showErrorDialog,
+} from '../../../helpers/toolsHelper'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
 const [email] = useInput('')
 const [password] = useInput('')
 const errors = ref({})
 
 function validate() {
   const result = {}
-  if (!email.value.trim()) result.email = 'Email wajib diisi'
-  else if (!isValidEmail(email.value)) result.email = 'Format email tidak valid'
-  if (!password.value) result.password = 'Kata sandi wajib diisi'
+
+  if (!email.value.trim()) {
+    result.email = 'Email wajib diisi'
+  } else if (!isValidEmail(email.value.trim())) {
+    result.email = 'Format email tidak valid'
+  }
+
+  const passwordIsEmpty = password.value.length === 0
+
+  if (passwordIsEmpty) {
+    result.password = ['Kata sandi', 'wajib diisi'].join(' ')
+  }
+
   errors.value = result
+
   return Object.keys(result).length === 0
 }
 
 async function onSubmit() {
   if (!validate()) return
-  const response = await authStore.login({ email: email.value.trim(), password: password.value })
+
+  const response = await authStore.login({
+    email: email.value.trim(),
+    password: password.value,
+  })
+
   if (isSuccess(response)) {
     router.push('/')
   } else {
-    showErrorDialog(extractErrorMessage(response), 'Login gagal')
+    showErrorDialog(
+      extractErrorMessage(response),
+      'Login gagal',
+    )
   }
 }
 </script>
 
 <template>
   <div>
-    <h1 class="text-3xl font-extrabold tracking-tight">Masuk ke akunmu</h1>
-    <p class="mt-2 text-sm text-muted">Gunakan akun Delcom untuk mulai menawar dan melelang.</p>
+    <h1 class="text-3xl font-extrabold tracking-tight">
+      Masuk ke akunmu
+    </h1>
 
-    <form class="mt-8 space-y-5" novalidate @submit.prevent="onSubmit">
+    <p class="mt-2 text-sm text-muted">
+      Gunakan akun Delcom untuk mulai menawar dan melelang.
+    </p>
+
+    <form
+      class="mt-8 space-y-5"
+      novalidate
+      @submit.prevent="onSubmit"
+    >
       <div>
-        <label class="label" for="login-email-input">Email</label>
-        <input id="login-email-input" v-model="email" type="email" class="field" placeholder="nama@del.ac.id" autocomplete="email" />
-        <p v-if="errors.email" class="field-error">{{ errors.email }}</p>
+        <label class="label" for="login-email-input">
+          Email
+        </label>
+
+        <input
+          id="login-email-input"
+          v-model="email"
+          type="email"
+          class="field"
+          placeholder="nama@del.ac.id"
+          autocomplete="email"
+        />
+
+        <p
+          v-if="errors.email"
+          class="field-error"
+        >
+          {{ errors.email }}
+        </p>
       </div>
+
       <div>
-        <label class="label" for="login-password-input">Kata sandi</label>
-        <input id="login-password-input" v-model="password" type="password" class="field" placeholder="Kata sandi" autocomplete="current-password" />
-        <p v-if="errors.password" class="field-error">{{ errors.password }}</p>
+        <label class="label" for="login-password-input">
+          Kata sandi
+        </label>
+
+        <input
+          id="login-password-input"
+          v-model="password"
+          type="password"
+          class="field"
+          placeholder="Kata sandi"
+          autocomplete="current-password"
+        />
+
+        <p
+          v-if="errors.password"
+          class="field-error"
+        >
+          {{ errors.password }}
+        </p>
       </div>
-      <button id="login-submit-button" type="submit" class="btn btn-primary w-full" :disabled="authStore.isLoading">
+
+      <button
+        id="login-submit-button"
+        type="submit"
+        class="btn btn-primary w-full"
+        :disabled="authStore.isLoading"
+      >
         {{ authStore.isLoading ? 'Memproses…' : 'Masuk' }}
       </button>
     </form>
 
     <p class="mt-6 text-sm text-muted">
       Belum punya akun?
-      <RouterLink to="/auth/register" class="font-semibold text-pine-700 underline">Daftar sekarang</RouterLink>
+
+      <RouterLink
+        to="/auth/register"
+        class="font-semibold text-pine-700 underline"
+      >
+        Daftar sekarang
+      </RouterLink>
     </p>
   </div>
 </template>
+```

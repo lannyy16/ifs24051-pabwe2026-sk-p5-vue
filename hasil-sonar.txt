@@ -1,0 +1,16 @@
+File  : E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\pages\LoginPage.vue
+Baris : 19
+Kode  : if (!password.value) result.password = 'Kata sandi wajib diisi'
+
+File  : E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\pages\RegisterPage.vue
+Baris : 26
+Kode  : if (password.value.length < 6) result.password = 'Kata sandi minimal 6 karakter'
+
+File  : E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue
+Baris : 71
+Kode  : if (!password.value) errors.password = 'Kata sandi saat ini wajib diisi'
+
+File  : E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue
+Baris : 72
+Kode  : if (newPassword.value.length < 6) errors.newPassword = 'Kata sandi baru minimal 6 karakter'
+

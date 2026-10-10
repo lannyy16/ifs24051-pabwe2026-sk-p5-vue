@@ -5,6 +5,7 @@ pipeline {
     options {
         timestamps()
         skipDefaultCheckout(true)
+        // Stop later stages if a publisher marks the build UNSTABLE/FAILURE mid-run
         skipStagesAfterUnstable()
     }
 
@@ -41,12 +42,6 @@ pipeline {
                 sh '''
                     set -e
 
-                    echo "======================================"
-                    echo "       INSTALLING DEPENDENCIES"
-                    echo "======================================"
-
-                    bun --version
-
                     echo "=== Installing Dependencies ==="
 
                     bun install
@@ -71,28 +66,9 @@ pipeline {
                 sh '''
                     set -e
 
-                    echo "======================================"
-                    echo "       RUNNING TESTS"
-                    echo "======================================"
+                    echo "=== Running Tests with Coverage ==="
 
-                    echo "=== Node Version ==="
-                    node --version
-
-                    echo "=== NPM Version ==="
-                    npm --version
-
-                    echo "=== Checking node_modules ==="
-                    test -d node_modules
-                    echo "node_modules tersedia"
-
-                    echo "=== Vitest Version ==="
-                    ./node_modules/.bin/vitest --version
-
-                    echo "=== Running Vitest with Coverage ==="
-
-                    ./node_modules/.bin/vitest run \
-                        --coverage \
-                        --pool=threads
+                    npx vitest run --coverage
 
                     echo "=== Tests Passed ==="
                 '''
@@ -147,6 +123,9 @@ pipeline {
 
             post {
                 always {
+                    // failOnError must be false: otherwise Warnings NG can mark the
+                    // whole build FAILURE while later stages still run (all green, badge red).
+                    // Build failure on HIGH/CRITICAL comes from trivy --exit-code 1 above.
                     recordIssues(
                         enabledForFailure: true,
                         failOnError: false,
@@ -179,9 +158,7 @@ pipeline {
                     sh '''
                         set -e
 
-                        echo "======================================"
-                        echo "       SONARQUBE ANALYSIS"
-                        echo "======================================"
+                        echo "=== SonarQube Analysis ==="
 
                         sonar-scanner
 
@@ -232,9 +209,12 @@ pipeline {
                         -x ".env" \
                         -x ".env.*" \
                         -x "coverage/*" \
+                        -x ".next/*" \
+                        -x "out/*" \
                         -x ".trivy-cache/*" \
                         -x "latest-app.zip" \
-                        -x "trivy-results.sarif"
+                        -x "trivy-results.sarif" \
+                        -x ".docs/*"
 
                     echo "=== Application Package Created ==="
 
@@ -254,9 +234,9 @@ pipeline {
 
             steps {
 
-                // ====================================================
+                // ========================================================
                 // 1. ARCHIVE ARTIFACT KE JENKINS
-                // ====================================================
+                // ========================================================
 
                 archiveArtifacts(
                     artifacts: 'latest-app.zip',

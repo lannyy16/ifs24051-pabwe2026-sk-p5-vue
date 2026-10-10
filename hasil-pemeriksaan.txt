@@ -1,0 +1,79 @@
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\router.js:4: import { getAccessToken } from './helpers/apiHelper'
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\router.js:65: const hasToken = Boolean(getAccessToken())
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\router.js:67: if (to.meta.requiresAuth && !hasToken) {
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\router.js:71: if (to.meta.guestOnly && hasToken) {
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\aucations\layouts\AucationLayout.vue:16: // Token kedaluwarsa / tidak valid -> kembali ke halaman login
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\api\authApi.js:3: export const login = ({ email, password }) => apiPost('/auth/login', { email, password }, false)
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\api\authApi.js:5: export const register = ({ name, email, password }) =>
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\api\authApi.js:6: apiPost('/auth/register', { name, email, password }, false)
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\pages\LoginPage.vue:12: const [password] = useInput('')
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\pages\LoginPage.vue:19: if (!password.value) result.password = 'Kata sandi wajib diisi'
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\pages\LoginPage.vue:26: const response = await authStore.login({ email: email.value.trim(), password: password.value })
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\pages\LoginPage.vue:47: <label class="label" for="login-password-input">Kata sandi</label>
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\pages\LoginPage.vue:48: <input id="login-password-input" v-model="password" type="password" class="field" placeholder="Kata sandi" autocomplete="current-password" />
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\pages\LoginPage.vue:49: <p v-if="errors.password" class="field-error">{{ errors.password }}</p>
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\pages\RegisterPage.vue:18: const [password] = useInput('')
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\pages\RegisterPage.vue:26: if (password.value.length < 6) result.password = 'Kata sandi minimal 6 karakter'
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\pages\RegisterPage.vue:36: password: password.value,
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\pages\RegisterPage.vue:64: <label class="label" for="password">Kata sandi</label>
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\pages\RegisterPage.vue:65: <input id="password" v-model="password" type="password" class="field" placeholder="Minimal 6 karakter" autocomplete="new-password" />
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\pages\RegisterPage.vue:66: <p v-if="errors.password" class="field-error">{{ errors.password }}</p>
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\states\authStore.js:5: getAccessToken,
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\states\authStore.js:7: putAccessToken,
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\states\authStore.js:8: removeAccessToken,
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\states\authStore.js:12: const token = ref(getAccessToken())
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\states\authStore.js:21: const isAuthenticated = computed(() => Boolean(token.value))
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\states\authStore.js:35: async function login(credentials) {
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\states\authStore.js:38: const response = await authApi.login(credentials)
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\states\authStore.js:40: token.value = response.data.token
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\states\authStore.js:41: putAccessToken(token.value)
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\states\authStore.js:55: /** Hapus sesi lokal (dipakai saat logout maupun token kedaluwarsa). */
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\states\authStore.js:57: removeAccessToken()
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\states\authStore.js:58: token.value = null
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\auth\states\authStore.js:72: token,
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\api\userApi.js:14: // Sesuai dokumentasi Delcom Open API: PUT /users/password
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\api\userApi.js:15: export const changePassword = ({ password, new_password, new_password_confirmation }) =>
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\api\userApi.js:16: apiPut('/users/password', { password, new_password, new_password_confirmation })
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:21: const [password, , resetPassword] = useInput('')
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:22: const [newPassword, , resetNewPassword] = useInput('')
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:25: const passwordErrors = ref({})
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:69: async function onPasswordSubmit() {
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:71: if (!password.value) errors.password = 'Kata sandi saat ini wajib diisi'
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:72: if (newPassword.value.length < 6) errors.newPassword = 'Kata sandi baru minimal 6 karakter'
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:73: if (confirmation.value !== newPassword.value) errors.confirmation = 'Konfirmasi tidak sama dengan kata sandi baru'
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:74: passwordErrors.value = errors
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:77: const response = await store.changePassword({
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:78: password: password.value,
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:79: new_password: newPassword.value,
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:80: new_password_confirmation: confirmation.value,
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:83: resetPassword()
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:84: resetNewPassword()
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:125: <form class="panel mt-6 space-y-5 p-6" novalidate @submit.prevent="onPasswordSubmit">
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:128: <label class="label" for="current-password">Kata sandi saat ini</label>
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:129: <input id="current-password" v-model="password" type="password" class="field" autocomplete="current-password" />
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:130: <p v-if="passwordErrors.password" class="field-error">{{ passwordErrors.password }}</p>
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:133: <label class="label" for="new-password">Kata sandi baru</label>
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:134: <input id="new-password" v-model="newPassword" type="password" class="field" autocomplete="new-password" />
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:135: <p v-if="passwordErrors.newPassword" class="field-error">{{ passwordErrors.newPassword }}</p>
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:138: <label class="label" for="confirm-password">Ulangi kata sandi baru</label>
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:139: <input id="confirm-password" v-model="confirmation" type="password" class="field" autocomplete="new-password" />
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:140: <p v-if="passwordErrors.confirmation" class="field-error">{{ passwordErrors.confirmation }}</p>
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:142: <button type="submit" class="btn btn-primary" :disabled="store.isPasswordChange">
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\pages\ProfilePage.vue:143: {{ store.isPasswordChange ? 'Menyimpan…' : 'Ubah kata sandi' }}
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\states\usersStore.js:29: const isPasswordChange = ref(false)
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\states\usersStore.js:30: const isPasswordChanged = ref(false)
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\states\usersStore.js:86: const changePassword = track(
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\states\usersStore.js:87: isPasswordChange,
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\states\usersStore.js:88: isPasswordChanged,
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\states\usersStore.js:89: (payload) => userApi.changePassword(payload),
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\states\usersStore.js:101: isPasswordChange,
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\states\usersStore.js:102: isPasswordChanged,
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\features\users\states\usersStore.js:108: changePassword,
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\helpers\apiHelper.js:1: const TOKEN_KEY = 'delcom_access_token'
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\helpers\apiHelper.js:3: export const getAccessToken = () => localStorage.getItem(TOKEN_KEY)
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\helpers\apiHelper.js:4: export const putAccessToken = (token) => localStorage.setItem(TOKEN_KEY, token)
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\helpers\apiHelper.js:5: export const removeAccessToken = () => localStorage.removeItem(TOKEN_KEY)
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\helpers\apiHelper.js:22: * - Header Authorization: Bearer <token> otomatis (jika ada token dan auth = true)
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\helpers\apiHelper.js:31: const token = getAccessToken()
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\helpers\apiHelper.js:32: if (token) headers.Authorization = `Bearer ${token}`
+E:\Semester 5\PABWE\ifs24051-pabwe2026-sk-p5-vue\src\helpers\apiHelper.js:45: if (response.status === 401) removeAccessToken()
